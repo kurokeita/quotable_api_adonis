@@ -5,6 +5,7 @@ router
   .group(() => {
     router.get('/', [QuotesController, 'index'])
     router.get('/random', [QuotesController, 'getRandomQuotes'])
+    router.get('/:id', [QuotesController, 'getById']).where('id', router.matchers.number())
   })
   .prefix('/api/quotes')
 

@@ -69,6 +69,10 @@ export default class QuoteRepository {
     })
   }
 
+  async getById(id: number) {
+    return await Quote.find(id)
+  }
+
   private filterLength(
     query: ModelQueryBuilderContract<typeof Quote, Quote>,
     length: number | undefined | null,
