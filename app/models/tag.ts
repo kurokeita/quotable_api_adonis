@@ -1,27 +1,15 @@
-import { BaseModel, beforeFetch, beforeFind, column, hasMany } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeFetch, beforeFind, column, manyToMany } from '@adonisjs/lucid/orm'
 import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
-import type { HasMany } from '@adonisjs/lucid/types/relations'
+import type { ManyToMany } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
 import Quote from './quote.js'
 
-export default class Author extends BaseModel {
-  @column({ isPrimary: true })
+export default class Tag extends BaseModel {
+  @column({ isPrimary: true, serializeAs: null })
   declare id: number
 
   @column()
-  declare slug: string
-
-  @column()
   declare name: string
-
-  @column()
-  declare link: string
-
-  @column()
-  declare bio: string
-
-  @column()
-  declare description: string
 
   @column.dateTime({
     autoCreate: true,
@@ -31,20 +19,26 @@ export default class Author extends BaseModel {
 
   @column.dateTime({
     autoCreate: true,
-    autoUpdate: true,
     serialize: (value: DateTime) => value.toFormat('yyyy-MM-dd'),
+    autoUpdate: true,
   })
   declare updatedAt: DateTime
 
   @column.dateTime({ serializeAs: null })
   declare deletedAt: DateTime
 
-  @hasMany(() => Quote)
-  declare quotes: HasMany<typeof Quote>
+  @manyToMany(() => Quote)
+  declare quotes: ManyToMany<typeof Quote>
 
   @beforeFetch()
   @beforeFind()
-  static ignoreDeleted(query: ModelQueryBuilderContract<typeof Author>) {
+  static ignoreDeleted(query: ModelQueryBuilderContract<typeof Tag>) {
     query.whereNull('deleted_at')
+  }
+
+  serializeExtras() {
+    return {
+      quoteCount: this.$extras.quotes_count,
+    }
   }
 }

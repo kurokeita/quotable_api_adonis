@@ -15,10 +15,10 @@ export default class AuthorRepository {
   }
 
   async getById(id: number) {
-    return await Author.find(id)
+    return await Author.query().preload('quotes').where('id', id).first()
   }
 
   async getBySlug(slug: string) {
-    return await Author.query().where('slug', slug).first()
+    return await Author.query().preload('quotes').where('slug', slug).first()
   }
 }

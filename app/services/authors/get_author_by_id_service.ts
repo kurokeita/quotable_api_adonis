@@ -1,4 +1,4 @@
-import AuthorService from './author_service.js'
+import AuthorService from '#services/authors/author_service'
 
 export default class GetAuthorByIdService extends AuthorService {
   async handle(id: number) {
