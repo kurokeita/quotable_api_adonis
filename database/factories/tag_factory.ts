@@ -1,10 +1,10 @@
-// import factory from '@adonisjs/lucid/factories'
-// import Tag from '#models/tag'
+import Tag from '#models/tag'
+import factory from '@adonisjs/lucid/factories'
 
-// export const TagFactory = factory
-//   .define(Tag, async ({ faker }) => {
-//     return {}
-//   })
-//   .build()
-
-// TODO: implement factory for Tag
+export const TagFactory = factory
+  .define(Tag, async ({ faker }) => {
+    return {
+      name: faker.word.noun(),
+    }
+  })
+  .build()
