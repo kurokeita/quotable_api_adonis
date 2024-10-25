@@ -16,8 +16,10 @@
   },
   "imports": {
     "#controllers/*": "./app/controllers/*.js",
+    "#requests/*": "./app/requests/*.js",
     "#exceptions/*": "./app/exceptions/*.js",
     "#models/*": "./app/models/*.js",
+    "#repositories/*": "./app/repositories/*.js",
     "#mails/*": "./app/mails/*.js",
     "#services/*": "./app/services/*.js",
     "#listeners/*": "./app/listeners/*.js",
@@ -27,6 +29,7 @@
     "#providers/*": "./providers/*.js",
     "#policies/*": "./app/policies/*.js",
     "#abilities/*": "./app/abilities/*.js",
+    "#utils/*": "./app/utils/*.js",
     "#database/*": "./database/*.js",
     "#start/*": "./start/*.js",
     "#tests/*": "./tests/*.js",
@@ -59,7 +62,8 @@
     "@vinejs/vine": "^2.1.0",
     "luxon": "^3.5.0",
     "mysql2": "^3.11.3",
-    "reflect-metadata": "^0.2.2"
+    "reflect-metadata": "^0.2.2",
+    "slugify": "^1.6.6"
   },
   "hotHook": {
     "boundaries": [
