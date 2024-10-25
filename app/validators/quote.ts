@@ -12,3 +12,13 @@ export const indexAllQuotesValidator = vine.compile(
     page: vine.number().min(1).optional(),
   })
 )
+
+export const getRandomQuoteValidator = vine.compile(
+  vine.object({
+    author: vine.string().optional(),
+    tags: vine.string().optional(),
+    minLength: vine.number().optional(),
+    maxLength: vine.number().optional(),
+    query: vine.string().optional(),
+  })
+)

@@ -7,11 +7,13 @@ export default class extends BaseSchema {
     this.schema.createTable(this.tableName, (table) => {
       table.bigIncrements('id')
       table.bigInteger('author_id').unsigned().references('authors.id')
-      table.text('content').index()
+      table.text('content')
 
       table.timestamp('created_at').defaultTo(this.raw('CURRENT_TIMESTAMP'))
       table.timestamp('updated_at').defaultTo(this.raw('CURRENT_TIMESTAMP'))
       table.timestamp('deleted_at')
+
+      table.index('content', 'content_index', 'FULLTEXT')
     })
   }
 

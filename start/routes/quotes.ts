@@ -6,3 +6,5 @@ router
     router.get('/', [QuotesController, 'index'])
   })
   .prefix('/api/quotes')
+
+router.get('/api', [QuotesController, 'getRandom'])
