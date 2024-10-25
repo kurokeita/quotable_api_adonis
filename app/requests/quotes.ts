@@ -1,4 +1,8 @@
-import { getRandomQuoteValidator, indexAllQuotesValidator } from '#validators/quote'
+import {
+  getRandomQuotesValidator,
+  getRandomQuoteValidator,
+  indexAllQuotesValidator,
+} from '#validators/quote'
 import { InferInput } from '@vinejs/vine/types'
 
 export type IndexAllQuotesRequest = Omit<
@@ -17,4 +21,13 @@ export type GetRandomQuoteRequest = Omit<
 > & {
   minLength?: number
   maxLength?: number
+}
+
+export type GetRandomQuotesRequest = Omit<
+  InferInput<typeof getRandomQuotesValidator>,
+  'limit' | 'minLength' | 'maxLength'
+> & {
+  minLength?: number
+  maxLength?: number
+  limit?: number
 }

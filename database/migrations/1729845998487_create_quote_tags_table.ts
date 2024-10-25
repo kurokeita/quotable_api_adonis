@@ -9,9 +9,6 @@ export default class extends BaseSchema {
       table.bigInteger('quote_id').unsigned().references('quotes.id')
       table.bigInteger('tag_id').unsigned().references('tags.id')
       table.unique(['quote_id', 'tag_id'])
-
-      table.timestamp('created_at')
-      table.timestamp('updated_at')
     })
   }
 

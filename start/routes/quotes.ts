@@ -4,6 +4,7 @@ import router from '@adonisjs/core/services/router'
 router
   .group(() => {
     router.get('/', [QuotesController, 'index'])
+    router.get('/random', [QuotesController, 'getRandomQuotes'])
   })
   .prefix('/api/quotes')
 

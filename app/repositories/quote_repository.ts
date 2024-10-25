@@ -1,7 +1,17 @@
+import { QuotesOrderByEnum } from '#enums/quotes'
+import { SortEnum } from '#enums/sort_enum'
 import Quote from '#models/quote'
-import { GetRandomQuoteRequest, IndexAllQuotesRequest } from '#requests/quotes'
+import {
+  GetRandomQuoteRequest,
+  GetRandomQuotesRequest,
+  IndexAllQuotesRequest,
+} from '#requests/quotes'
 import db from '@adonisjs/lucid/services/db'
 import { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
+import { DateTime } from 'luxon'
+
+const DEFAULT_LIMIT = 10
+const DEFAULT_PAGE = 1
 
 export default class QuoteRepository {
   async index(input: IndexAllQuotesRequest) {
@@ -13,8 +23,8 @@ export default class QuoteRepository {
       .filterTags(query, input.tags)
 
     return await query
-      .orderBy(input.sortBy ?? 'created_at', input.order ?? 'asc')
-      .paginate(input.page ?? 1, input.limit ?? 10)
+      .orderBy(input.sortBy ?? QuotesOrderByEnum.CREATED_AT, input.order ?? 'asc')
+      .paginate(input.page ?? DEFAULT_PAGE, input.limit ?? DEFAULT_LIMIT)
   }
 
   async getRandomQuote(input: GetRandomQuoteRequest) {
@@ -27,6 +37,36 @@ export default class QuoteRepository {
       .queryContent(query, input.query)
 
     return await query.orderByRaw('RAND()').first()
+  }
+
+  async getRandomQuotes(input: GetRandomQuotesRequest) {
+    const query = Quote.query()
+
+    this.filterLength(query, input.minLength, '>=')
+      .filterLength(query, input.maxLength, '<=')
+      .filterAuthor(query, input.author)
+      .filterTags(query, input.tags)
+      .queryContent(query, input.query)
+
+    const quotes = await query.orderByRaw('RAND()').limit(input.limit ?? DEFAULT_LIMIT)
+    const sortBy = input.sortBy ?? QuotesOrderByEnum.CREATED_AT
+    const order = input.order ?? SortEnum.ASC
+
+    return quotes.sort((a, b) => {
+      let comparison = 0
+      const first = a[sortBy]
+      const second = b[sortBy]
+
+      if (first instanceof DateTime && second instanceof DateTime) {
+        comparison = first.toUnixInteger() - second.toUnixInteger()
+      } else if (typeof first === 'string' && typeof second === 'string') {
+        comparison = first.localeCompare(second)
+      } else if (typeof first === 'number' && typeof second === 'number') {
+        comparison = first - second
+      }
+
+      return order === SortEnum.ASC ? comparison : -comparison
+    })
   }
 
   private filterLength(
