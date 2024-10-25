@@ -1,0 +1,38 @@
+name: 'quote_api_adonis'
+
+services:
+  app:
+    image: node:20.18.0-alpine
+    container_name: quote_api_adonis.app
+    depends_on:
+      - db
+    restart: unless-stopped
+    user: node
+    entrypoint:
+      - sh
+      - -c
+      - npm i && npm run migrate && npm run dev
+    volumes:
+      - ./:/app:rw
+    working_dir: /app
+    ports:
+      - ${DOCKER_APP_PORT:-3333}:3333
+    networks:
+      - adonisjs_starter_network
+
+  db:
+    image: mariadb:10.11.9
+    container_name: quote_api_adonis.db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - ${DOCKER_DB_PORT:-3306}:3306
+    environment:
+      MYSQL_DATABASE: app
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - adonisjs_starter_network
+
+networks:
+  adonisjs_starter_network:
+    driver: bridge
