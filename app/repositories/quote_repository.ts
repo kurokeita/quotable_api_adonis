@@ -111,7 +111,7 @@ export default class QuoteRepository {
         tagsList.forEach((tag: string) => builder.orWhere('name', tag))
       })
     } else {
-      const tagsList: string[] = tags.split(';')
+      const tagsList: string[] = tags.split(',')
 
       tagsList.forEach((tag: string) =>
         query.whereHas('tags', (builder) => builder.where('name', tag))
