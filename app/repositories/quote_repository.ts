@@ -129,6 +129,11 @@ export default class QuoteRepository {
       return this
     }
 
-    query.whereRaw(`MATCH (content) AGAINST('${search}')`)
+    const keywords = search
+      .split(/[\s,;]+/)
+      .map((w) => w + '*')
+      .join(',')
+
+    query.whereRaw(`MATCH (content) AGAINST('${keywords}' IN BOOLEAN MODE)`)
   }
 }
