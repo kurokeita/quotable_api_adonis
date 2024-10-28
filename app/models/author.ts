@@ -1,5 +1,13 @@
-import { BaseModel, beforeFetch, beforeFind, column, hasMany } from '@adonisjs/lucid/orm'
-import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
+import {
+  BaseModel,
+  beforeFetch,
+  beforeFind,
+  column,
+  computed,
+  hasMany,
+  scope,
+} from '@adonisjs/lucid/orm'
+import type { ModelObject, ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
 import Quote from './quote.js'
@@ -23,17 +31,10 @@ export default class Author extends BaseModel {
   @column()
   declare description: string
 
-  @column.dateTime({
-    autoCreate: true,
-    serialize: (value: DateTime) => value.toFormat('yyyy-MM-dd'),
-  })
+  @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
-  @column.dateTime({
-    autoCreate: true,
-    autoUpdate: true,
-    serialize: (value: DateTime) => value.toFormat('yyyy-MM-dd'),
-  })
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
   @column.dateTime({ serializeAs: null })
@@ -42,9 +43,29 @@ export default class Author extends BaseModel {
   @hasMany(() => Quote)
   declare quotes: HasMany<typeof Quote>
 
+  @computed()
+  get quoteCount(): number | null {
+    return this.$extras?.quoteCount ?? null
+  }
+
   @beforeFetch()
   @beforeFind()
   static ignoreDeleted(query: ModelQueryBuilderContract<typeof Author>) {
     query.whereNull('deleted_at')
+  }
+
+  static withQuoteCount = scope((query: ModelQueryBuilderContract<typeof Author>) => {
+    query.withCount('quotes', (q) => q.as('quoteCount'))
+  })
+
+  serialize(): ModelObject {
+    const serializedData = super.serialize()
+
+    // If quoteCount is not loaded, do not serialize it in the response
+    if (this.quoteCount === null) {
+      delete serializedData.quoteCount
+    }
+
+    return serializedData
   }
 }

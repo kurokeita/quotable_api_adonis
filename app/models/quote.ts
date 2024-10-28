@@ -4,9 +4,10 @@ import {
   beforeFind,
   belongsTo,
   column,
+  computed,
   manyToMany,
 } from '@adonisjs/lucid/orm'
-import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
+import type { ModelObject, ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import type { BelongsTo, ManyToMany } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
 import Author from './author.js'
@@ -22,17 +23,10 @@ export default class Quote extends BaseModel {
   @column()
   declare content: string
 
-  @column.dateTime({
-    autoCreate: true,
-    serialize: (value: DateTime) => value.toFormat('yyyy-MM-dd'),
-  })
+  @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
-  @column.dateTime({
-    autoCreate: true,
-    autoUpdate: true,
-    serialize: (value: DateTime) => value.toFormat('yyyy-MM-dd'),
-  })
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
   @column.dateTime({ serializeAs: null })
@@ -44,6 +38,11 @@ export default class Quote extends BaseModel {
   @manyToMany(() => Tag)
   declare tags: ManyToMany<typeof Tag>
 
+  @computed()
+  get length(): number {
+    return this.content.length
+  }
+
   @beforeFetch()
   @beforeFind()
   static ignoreDeleted(query: ModelQueryBuilderContract<typeof Quote>) {
@@ -52,7 +51,23 @@ export default class Quote extends BaseModel {
 
   @beforeFetch()
   @beforeFind()
-  static withTags(query: ModelQueryBuilderContract<typeof Quote>) {
+  static queryBasicRelationships(query: ModelQueryBuilderContract<typeof Quote>) {
     query.preload('tags').preload('author')
+  }
+
+  serialize(): ModelObject {
+    const serializedData = super.serialize()
+
+    if (this.$preloaded && this.$preloaded.author) {
+      const author = this.$preloaded.author as Author
+      serializedData.author = author?.name
+    }
+
+    if (this.$preloaded && this.$preloaded.tags) {
+      const tags = this.$preloaded.tags as Array<Tag>
+      serializedData.tags = tags.map((t) => t.name)
+    }
+
+    return serializedData
   }
 }

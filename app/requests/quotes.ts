@@ -11,8 +11,8 @@ export type IndexAllQuotesRequest = Omit<
 > & {
   minLength?: number
   maxLength?: number
-  page?: number
-  limit?: number
+  page: number
+  limit: number
 }
 
 export type GetRandomQuoteRequest = Omit<
@@ -29,5 +29,5 @@ export type GetRandomQuotesRequest = Omit<
 > & {
   minLength?: number
   maxLength?: number
-  limit?: number
+  limit: number
 }
