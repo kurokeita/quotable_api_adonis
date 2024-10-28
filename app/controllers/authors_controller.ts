@@ -2,6 +2,7 @@ import {
   CreateAuthorRequest,
   CreateAuthorsRequest,
   IndexAllAuthorsRequest,
+  UpdateAuthorRequest,
 } from '#requests/authors'
 import CreateAuthorService from '#services/authors/create_author_service'
 import CreateAuthorsService from '#services/authors/create_authors_service'
@@ -12,6 +13,7 @@ import {
   createAuthorsValidator,
   createAuthorValidator,
   indexAllAuthorsValidator,
+  updateAuthorValidator,
 } from '#validators/author'
 import { errors, inject } from '@adonisjs/core'
 import { HttpContext } from '@adonisjs/core/http'
@@ -19,9 +21,7 @@ import { HttpContext } from '@adonisjs/core/http'
 export default class AuthorsController {
   @inject()
   async index({ request }: HttpContext, service: IndexAllAuthorsService) {
-    const query = request.qs()
-
-    const data: IndexAllAuthorsRequest = await indexAllAuthorsValidator.validate(query)
+    const data: IndexAllAuthorsRequest = await request.validateUsing(indexAllAuthorsValidator)
 
     return await service.handle(data)
   }
@@ -60,15 +60,26 @@ export default class AuthorsController {
 
   @inject()
   async create({ request }: HttpContext, service: CreateAuthorService) {
-    const data: CreateAuthorRequest = await createAuthorValidator.validate(request.body())
+    const data: CreateAuthorRequest = await request.validateUsing(createAuthorValidator)
 
     return await service.handle(data)
   }
 
   @inject()
   async createMultiple({ request }: HttpContext, service: CreateAuthorsService) {
-    const data: CreateAuthorsRequest = await createAuthorsValidator.validate(request.body())
+    const data: CreateAuthorsRequest = await request.validateUsing(createAuthorsValidator)
 
     return await service.handle(data)
+  }
+
+  @inject()
+  async update({ request }: HttpContext) {
+    const data: UpdateAuthorRequest = await request.validateUsing(updateAuthorValidator, {
+      meta: { authorId: request.param('id') },
+    })
+
+    // TODO: create service and repository method to patch data for author
+
+    return data
   }
 }

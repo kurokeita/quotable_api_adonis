@@ -56,9 +56,13 @@ export default class AuthorRepository {
     return await Author.query().whereIn('name', [names].flat(Infinity))
   }
 
-  // Is this faster then the single `WHERE` query?
-  // Who know, this is far better than creating 2 methods for checking a single name and checking multiple names.
-  async exists(names: string[] | string) {
-    return (await Author.query().whereIn('name', [names].flat(Infinity)).first()) !== null
+  async exists(name: string, ignoreId: number | null = null) {
+    const query = Author.query().where('name', name)
+
+    if (ignoreId !== null) {
+      query.whereNot('id', ignoreId)
+    }
+
+    return (await query.first()) !== null
   }
 }

@@ -2,6 +2,7 @@ import {
   createAuthorsValidator,
   createAuthorValidator,
   indexAllAuthorsValidator,
+  updateAuthorValidator,
 } from '#validators/author'
 import { InferInput } from '@vinejs/vine/types'
 
@@ -16,3 +17,5 @@ export type IndexAllAuthorsRequest = Omit<
 export type CreateAuthorRequest = InferInput<typeof createAuthorValidator>
 
 export type CreateAuthorsRequest = InferInput<typeof createAuthorsValidator>
+
+export type UpdateAuthorRequest = InferInput<typeof updateAuthorValidator>

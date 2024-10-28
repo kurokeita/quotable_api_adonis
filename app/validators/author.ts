@@ -46,3 +46,18 @@ export const createAuthorsValidator = vine.compile(
     authors: vine.array(createAuthorSchema).distinct('name'),
   })
 )
+
+export const updateAuthorValidator = vine.withMetaData<{ authorId: number }>().compile(
+  vine.object({
+    name: vine
+      .string()
+      .unique(async (_db, value, field) => {
+        const authorRepository = await app.container.make(AuthorRepository)
+        return !(await authorRepository.exists(value, field.meta.authorId))
+      })
+      .optional(),
+    link: vine.string().url().optional(),
+    bio: vine.string().optional(),
+    description: vine.string().optional(),
+  })
+)
