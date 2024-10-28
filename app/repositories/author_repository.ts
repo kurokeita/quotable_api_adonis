@@ -65,7 +65,7 @@ export default class AuthorRepository {
     )
   }
 
-  async exists(names: string[]) {
-    return (await Author.query().whereIn('name', names).first()) !== null
+  async exists(names: string[] | string) {
+    return (await Author.query().whereIn('name', [names].flat(Infinity)).first()) !== null
   }
 }

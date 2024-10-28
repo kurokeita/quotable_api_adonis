@@ -54,7 +54,7 @@ export const createAuthorValidator = vine.compile(
     ...createAuthorSchema.getProperties(),
     name: vine.string().unique(async (_db, value) => {
       const authorRepository = await app.container.make(AuthorRepository)
-      return !(await authorRepository.exists([value]))
+      return !(await authorRepository.exists(value))
     }),
   })
 )
