@@ -1,8 +1,18 @@
-import { IndexAllAuthorsRequest } from '#requests/authors'
+import {
+  CreateAuthorRequest,
+  CreateAuthorsRequest,
+  IndexAllAuthorsRequest,
+} from '#requests/authors'
+import CreateAuthorService from '#services/authors/create_author_service'
+import CreateAuthorsService from '#services/authors/create_authors_service'
 import GetAuthorByIdService from '#services/authors/get_author_by_id_service'
 import GetAuthorBySlugService from '#services/authors/get_author_by_slug'
 import IndexAllAuthorsService from '#services/authors/index_all_author_service'
-import { indexAllAuthorsValidator } from '#validators/author'
+import {
+  createAuthorsValidator,
+  createAuthorValidator,
+  indexAllAuthorsValidator,
+} from '#validators/author'
 import { errors, inject } from '@adonisjs/core'
 import { HttpContext } from '@adonisjs/core/http'
 
@@ -46,5 +56,19 @@ export default class AuthorsController {
     }
 
     return result
+  }
+
+  @inject()
+  async create({ request }: HttpContext, service: CreateAuthorService) {
+    const data: CreateAuthorRequest = await createAuthorValidator.validate(request.body())
+
+    return await service.handle(data)
+  }
+
+  @inject()
+  async createMultiple({ request }: HttpContext, service: CreateAuthorsService) {
+    const data: CreateAuthorsRequest = await createAuthorsValidator.validate(request.body())
+
+    return await service.handle(data)
   }
 }

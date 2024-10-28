@@ -1,4 +1,8 @@
-import { indexAllAuthorsValidator } from '#validators/author'
+import {
+  createAuthorsValidator,
+  createAuthorValidator,
+  indexAllAuthorsValidator,
+} from '#validators/author'
 import { InferInput } from '@vinejs/vine/types'
 
 export type IndexAllAuthorsRequest = Omit<
@@ -8,3 +12,7 @@ export type IndexAllAuthorsRequest = Omit<
   page: number
   limit: number
 }
+
+export type CreateAuthorRequest = InferInput<typeof createAuthorValidator>
+
+export type CreateAuthorsRequest = InferInput<typeof createAuthorsValidator>
