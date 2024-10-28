@@ -8,8 +8,12 @@
 */
 
 const HealthChecksController = () => import('#controllers/health_checks_controller')
-import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
+import router from '@adonisjs/core/services/router'
+
+import '#start/routes/authors'
+import '#start/routes/quotes'
+import '#start/routes/tags'
 
 router.get('/health', [HealthChecksController, 'handle']).use(middleware.serverMonitor())
 router.get('/ping', [HealthChecksController, 'ping'])
