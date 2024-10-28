@@ -4,7 +4,6 @@ import AuthorRepository from '#repositories/author_repository'
 import { getDefaultValue } from '#utils/helpers'
 import app from '@adonisjs/core/services/app'
 import vine from '@vinejs/vine'
-import { FieldContext } from '@vinejs/vine/types'
 
 export const indexAllAuthorsValidator = vine.compile(
   vine.object({
@@ -32,23 +31,6 @@ const createAuthorSchema = vine.object({
   description: vine.string(),
 })
 
-async function uniqueAuthors(value: unknown, _options: {}, field: FieldContext) {
-  if (!Array.isArray(value)) {
-    return
-  }
-
-  const authorRepository = await app.container.make(AuthorRepository)
-  const names = value.map((author) => author.name)
-
-  const exists = await authorRepository.exists(names)
-
-  if (exists) {
-    field.report('Author names must be unique', 'unique', field)
-  }
-}
-
-const uniqueAuthorsRule = vine.createRule(uniqueAuthors)
-
 export const createAuthorValidator = vine.compile(
   vine.object({
     ...createAuthorSchema.getProperties(),
@@ -61,6 +43,6 @@ export const createAuthorValidator = vine.compile(
 
 export const createAuthorsValidator = vine.compile(
   vine.object({
-    authors: vine.array(createAuthorSchema).distinct('name').use(uniqueAuthorsRule({})),
+    authors: vine.array(createAuthorSchema).distinct('name'),
   })
 )
