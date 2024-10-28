@@ -1,5 +1,6 @@
 import { AuthorsSortByEnum } from '#enums/authors'
 import { OrderEnum } from '#enums/order_enum'
+import { getDefaultValue } from '#utils/helpers'
 import vine from '@vinejs/vine'
 
 export const indexAllAuthorsValidator = vine.compile(
@@ -8,17 +9,15 @@ export const indexAllAuthorsValidator = vine.compile(
       .number()
       .min(10)
       .max(50)
-      .parse((v: unknown) => (v === undefined || v === null ? 10 : v)),
+      .parse((v: unknown) => getDefaultValue(v, 10)),
     page: vine
       .number()
       .min(1)
-      .parse((v: unknown) => (v === undefined || v === null ? 1 : v)),
+      .parse((v: unknown) => getDefaultValue(v, 1)),
     slug: vine.string().optional(),
     sortBy: vine
       .enum(AuthorsSortByEnum)
-      .parse((v: unknown) => (v === undefined || v === null ? AuthorsSortByEnum.CREATED_AT : v)),
-    order: vine
-      .enum(OrderEnum)
-      .parse((v: unknown) => (v === undefined || v === null ? OrderEnum.ASC : v)),
+      .parse((v: unknown) => getDefaultValue(v, AuthorsSortByEnum.CREATED_AT)),
+    order: vine.enum(OrderEnum).parse((v: unknown) => getDefaultValue(v, OrderEnum.ASC)),
   })
 )
