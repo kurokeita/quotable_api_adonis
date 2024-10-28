@@ -1,5 +1,4 @@
 import { OrderEnum } from '#enums/order_enum'
-import { QuotesOrderByEnum } from '#enums/quotes'
 import Quote from '#models/quote'
 import {
   GetRandomQuoteRequest,
@@ -10,9 +9,6 @@ import db from '@adonisjs/lucid/services/db'
 import { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import { DateTime } from 'luxon'
 
-const DEFAULT_LIMIT = 10
-const DEFAULT_PAGE = 1
-
 export default class QuoteRepository {
   async index(input: IndexAllQuotesRequest) {
     const query = Quote.query()
@@ -22,9 +18,7 @@ export default class QuoteRepository {
       .filterAuthor(query, input.author)
       .filterTags(query, input.tags)
 
-    return await query
-      .orderBy(input.sortBy ?? QuotesOrderByEnum.CREATED_AT, input.order ?? 'asc')
-      .paginate(input.page ?? DEFAULT_PAGE, input.limit ?? DEFAULT_LIMIT)
+    return await query.orderBy(input.sortBy, input.order).paginate(input.page, input.limit)
   }
 
   async getRandomQuote(input: GetRandomQuoteRequest) {
@@ -48,14 +42,12 @@ export default class QuoteRepository {
       .filterTags(query, input.tags)
       .queryContent(query, input.query)
 
-    const quotes = await query.orderByRaw('RAND()').limit(input.limit ?? DEFAULT_LIMIT)
-    const sortBy = input.sortBy ?? QuotesOrderByEnum.CREATED_AT
-    const order = input.order ?? OrderEnum.ASC
+    const quotes = await query.orderByRaw('RAND()').limit(input.limit)
 
     return quotes.sort((a, b) => {
       let comparison = 0
-      const first = a[sortBy]
-      const second = b[sortBy]
+      const first = a[input.sortBy]
+      const second = b[input.sortBy]
 
       if (first instanceof DateTime && second instanceof DateTime) {
         comparison = first.toUnixInteger() - second.toUnixInteger()
@@ -65,7 +57,7 @@ export default class QuoteRepository {
         comparison = first - second
       }
 
-      return order === OrderEnum.ASC ? comparison : -comparison
+      return input.order === OrderEnum.ASC ? comparison : -comparison
     })
   }
 
