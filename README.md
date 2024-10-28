@@ -335,7 +335,7 @@ Get a list of all tags
 
 | param  | type   | Description                                                                                                                                                                                                                                                       |
 | :----- | :----- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| sortBy | `enum` | `Default: "name"` &nbsp; `values: "createdAt", "updatedAt", "name"` <br> The field used to sort tags.                                                                                                                                                             |
+| sortBy | `enum` | `Default: "name"` &nbsp; `values: "createdAt", "updatedAt", "name", "quoteCount"` <br> The field used to sort tags.                                                                                                                                                             |
 | order  | `enum` | `values: "asc", "desc"` <br> The order in which results are sorted. The default order depends on the sortBy field. For string fields that are sorted alphabetically, the default order is ascending. For number and date fields, the default order is descending. |
 
 ### Response
@@ -343,11 +343,18 @@ Get a list of all tags
 ```ts
 {
   // The number of all tags by this request
-  count: number
+  meta: {
+    total: number
+  }
   // The array of tags
   data: Array<{
     id: number
     name: string
+    quoteCount: number
+    // The time the tag was added to the database.
+    createdAt: DateTime
+    // The time the tag was edited.
+    updatedAt: DateTime
   }>
 }
 ```

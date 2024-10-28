@@ -1,5 +1,5 @@
+import { OrderEnum } from '#enums/order_enum'
 import { QuotesOrderByEnum } from '#enums/quotes'
-import { SortEnum } from '#enums/sort_enum'
 import Quote from '#models/quote'
 import {
   GetRandomQuoteRequest,
@@ -50,7 +50,7 @@ export default class QuoteRepository {
 
     const quotes = await query.orderByRaw('RAND()').limit(input.limit ?? DEFAULT_LIMIT)
     const sortBy = input.sortBy ?? QuotesOrderByEnum.CREATED_AT
-    const order = input.order ?? SortEnum.ASC
+    const order = input.order ?? OrderEnum.ASC
 
     return quotes.sort((a, b) => {
       let comparison = 0
@@ -65,7 +65,7 @@ export default class QuoteRepository {
         comparison = first - second
       }
 
-      return order === SortEnum.ASC ? comparison : -comparison
+      return order === OrderEnum.ASC ? comparison : -comparison
     })
   }
 
