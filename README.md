@@ -241,6 +241,8 @@ Get all authors matching the given query. This endpoint can be used to list auth
     // A slug is a URL-friendly ID derived from the authors name. It can be used as
     // identifier for the author
     slug: string
+    // The number of quotes by the author
+    quoteCount: number
     // The time the author was added to the database.
     createdAt: DateTime
     // The time the author was edited.
@@ -279,6 +281,8 @@ GET /authors/:id
   // A slug is a URL-friendly ID derived from the authors name. It can be used as
   // identifier for the author
   slug: string
+  // The number of quotes by the author
+  quoteCount: number
   // The time the author was added to the database.
   createdAt: DateTime
   // The time the author was edited.
@@ -316,6 +320,8 @@ GET /authors/slugs/:slug
   // A slug is a URL-friendly ID derived from the authors name. It can be used as
   // identifier for the author
   slug: string
+  // The number of quotes by the author
+  quoteCount: number
   // The time the author was added to the database.
   createdAt: DateTime
   // The time the author was edited.
@@ -335,7 +341,7 @@ Get a list of all tags
 
 | param  | type   | Description                                                                                                                                                                                                                                                       |
 | :----- | :----- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| sortBy | `enum` | `Default: "name"` &nbsp; `values: "createdAt", "updatedAt", "name", "quoteCount"` <br> The field used to sort tags.                                                                                                                                                             |
+| sortBy | `enum` | `Default: "name"` &nbsp; `values: "createdAt", "updatedAt", "name", "quoteCount"` <br> The field used to sort tags.                                                                                                                                               |
 | order  | `enum` | `values: "asc", "desc"` <br> The order in which results are sorted. The default order depends on the sortBy field. For string fields that are sorted alphabetically, the default order is ascending. For number and date fields, the default order is descending. |
 
 ### Response

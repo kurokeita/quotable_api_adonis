@@ -5,6 +5,6 @@ export type IndexAllAuthorsRequest = Omit<
   InferInput<typeof indexAllAuthorsValidator>,
   'page' | 'limit'
 > & {
-  page?: number
-  limit?: number
+  page: number
+  limit: number
 }
