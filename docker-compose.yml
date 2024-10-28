@@ -11,7 +11,7 @@ services:
     entrypoint:
       - sh
       - -c
-      - npm i && npm run migrate && npm run dev
+      - npm ci && npm run migrate && npm run dev
     volumes:
       - ./:/app:rw
     working_dir: /app
