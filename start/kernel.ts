@@ -44,4 +44,5 @@ router.use([
 export const middleware = router.named({
   auth: () => import('#middleware/auth_middleware'),
   serverMonitor: () => import('#middleware/server_monitor_middleware'),
+  resourceManipulation: () => import('#middleware/resources_manipulation_middleware'),
 })
