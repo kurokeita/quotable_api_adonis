@@ -12,6 +12,7 @@ router
       .group(() => {
         router.post('/', [QuotesController, 'create'])
         router.patch('/:id', [QuotesController, 'update'])
+        router.delete('/:id', [QuotesController, 'delete'])
       })
       .middleware(middleware.resourceManipulation())
   })

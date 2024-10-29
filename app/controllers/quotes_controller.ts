@@ -21,6 +21,7 @@ import {
   updateQuoteValidator,
 } from '#validators/quote'
 import { inject } from '@adonisjs/core'
+import DeleteQuoteService from '#services/quotes/delete_quote_service'
 
 export default class QuotesController {
   @inject()
@@ -61,5 +62,10 @@ export default class QuotesController {
     const data: UpdateQuoteRequest = await request.validateUsing(updateQuoteValidator)
 
     return await service.handle(request.param('id'), data)
+  }
+
+  @inject()
+  async delete({ request }: HttpContext, service: DeleteQuoteService) {
+    return await service.handle(request.param('id'))
   }
 }

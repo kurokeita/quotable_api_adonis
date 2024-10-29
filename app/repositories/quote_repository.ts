@@ -99,15 +99,23 @@ export default class QuoteRepository {
     input: Partial<UpdateQuoteRequest>,
     options: { transaction?: TransactionClientContract } = {}
   ) {
-    const quote = (await this.getById(id, { transactions: options.transaction })) as Quote
+    const quote = await this.getById(id, { transactions: options.transaction })
 
     quote
-      .merge({
+      ?.merge({
         content: input.content ?? quote.content,
       })
-      .save()
+      ?.save()
 
-    return quote
+    return quote as Quote
+  }
+
+  async delete(id: number, options: { transaction?: TransactionClientContract } = {}) {
+    const quote = await this.getById(id, { transactions: options.transaction })
+
+    await quote?.delete()
+
+    return quote as Quote
   }
 
   private filterLength(
