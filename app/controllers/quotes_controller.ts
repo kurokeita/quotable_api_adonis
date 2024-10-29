@@ -5,17 +5,20 @@ import {
   GetRandomQuoteRequest,
   GetRandomQuotesRequest,
   IndexAllQuotesRequest,
+  UpdateQuoteRequest,
 } from '#requests/quotes'
 import CreateQuoteService from '#services/quotes/create_quote_service'
 import GetQuoteByIdService from '#services/quotes/get_quote_by_id_service'
 import GetRandomQuoteService from '#services/quotes/get_random_quote_service'
 import GetRandomQuotesService from '#services/quotes/get_random_quotes_service'
 import IndexAllQuoteSerive from '#services/quotes/index_all_quote_service'
+import UpdateQuoteService from '#services/quotes/update_quote_service'
 import {
   createQuoteValidator,
   getRandomQuotesValidator,
   getRandomQuoteValidator,
   indexAllQuotesValidator,
+  updateQuoteValidator,
 } from '#validators/quote'
 import { errors, inject } from '@adonisjs/core'
 
@@ -68,5 +71,12 @@ export default class QuotesController {
     const data: CreateQuoteRequest = await request.validateUsing(createQuoteValidator)
 
     return await service.handle(data)
+  }
+
+  @inject()
+  async update({ request }: HttpContext, service: UpdateQuoteService) {
+    const data: UpdateQuoteRequest = await request.validateUsing(updateQuoteValidator)
+
+    return await service.handle(request.param('id'), data)
   }
 }

@@ -66,3 +66,10 @@ export const createQuoteValidator = vine.compile(
     tags: vine.array(vine.string()).optional(),
   })
 )
+
+export const updateQuoteValidator = vine.compile(
+  vine.object({
+    content: vine.string().optional(),
+    tags: vine.array(vine.string()).optional(),
+  })
+)

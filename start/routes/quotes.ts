@@ -11,6 +11,7 @@ router
     router
       .group(() => {
         router.post('/', [QuotesController, 'create'])
+        router.patch('/:id', [QuotesController, 'update'])
       })
       .middleware(middleware.resourceManipulation())
   })

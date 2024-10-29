@@ -5,6 +5,7 @@ import {
   GetRandomQuoteRequest,
   GetRandomQuotesRequest,
   IndexAllQuotesRequest,
+  UpdateQuoteRequest,
 } from '#requests/quotes'
 import db from '@adonisjs/lucid/services/db'
 import { TransactionClientContract } from '@adonisjs/lucid/types/database'
@@ -91,6 +92,22 @@ export default class QuoteRepository {
       { content: input.content, authorId: input.authorId },
       { client: options.transaction }
     )
+  }
+
+  async update(
+    id: number,
+    input: Partial<UpdateQuoteRequest>,
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    const quote = (await this.getById(id, { transactions: options.transaction })) as Quote
+
+    quote
+      .merge({
+        content: input.content ?? quote.content,
+      })
+      .save()
+
+    return quote
   }
 
   private filterLength(
