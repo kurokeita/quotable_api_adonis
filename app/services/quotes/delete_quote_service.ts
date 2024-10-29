@@ -5,11 +5,17 @@ export default class DeleteQuoteService extends QuoteService {
   async handle(id: number) {
     db.beginGlobalTransaction()
 
-    const quote = await this.repository().delete(id)
-    await quote.related('tags').detach()
+    try {
+      const quote = await this.repository().delete(id)
+      await quote.related('tags').detach()
 
-    db.commitGlobalTransaction()
+      db.commitGlobalTransaction()
 
-    return quote
+      return quote
+    } catch (error) {
+      db.rollbackGlobalTransaction()
+
+      throw error
+    }
   }
 }

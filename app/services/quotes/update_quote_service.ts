@@ -17,14 +17,20 @@ export default class UpdateQuoteService extends QuoteService {
   async handle(id: number, input: UpdateQuoteRequest) {
     await db.beginGlobalTransaction()
 
-    const quote = await this.repository().update(id, input)
+    try {
+      const quote = await this.repository().update(id, input)
 
-    if (input.tags && input.tags.length > 0) {
-      await this.syncTagsService.handle(quote, input.tags)
+      if (input.tags && input.tags.length > 0) {
+        await this.syncTagsService.handle(quote, input.tags)
+      }
+
+      await db.commitGlobalTransaction()
+
+      return quote
+    } catch (error) {
+      await db.rollbackGlobalTransaction()
+
+      throw error
     }
-
-    await db.commitGlobalTransaction()
-
-    return quote
   }
 }
