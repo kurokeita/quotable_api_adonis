@@ -1,15 +1,18 @@
 import type { HttpContext } from '@adonisjs/core/http'
 
 import {
+  CreateQuoteRequest,
   GetRandomQuoteRequest,
   GetRandomQuotesRequest,
   IndexAllQuotesRequest,
 } from '#requests/quotes'
+import CreateQuoteService from '#services/quotes/create_quote_service'
 import GetQuoteByIdService from '#services/quotes/get_quote_by_id_service'
 import GetRandomQuoteService from '#services/quotes/get_random_quote_service'
 import GetRandomQuotesService from '#services/quotes/get_random_quotes_service'
 import IndexAllQuoteSerive from '#services/quotes/index_all_quote_service'
 import {
+  createQuoteValidator,
   getRandomQuotesValidator,
   getRandomQuoteValidator,
   indexAllQuotesValidator,
@@ -58,5 +61,12 @@ export default class QuotesController {
     }
 
     return result
+  }
+
+  @inject()
+  async create({ request }: HttpContext, service: CreateQuoteService) {
+    const data: CreateQuoteRequest = await request.validateUsing(createQuoteValidator)
+
+    return await service.handle(data)
   }
 }

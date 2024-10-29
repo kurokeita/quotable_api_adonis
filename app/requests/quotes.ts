@@ -1,4 +1,5 @@
 import {
+  createQuoteValidator,
   getRandomQuotesValidator,
   getRandomQuoteValidator,
   indexAllQuotesValidator,
@@ -30,4 +31,8 @@ export type GetRandomQuotesRequest = Omit<
   minLength?: number
   maxLength?: number
   limit: number
+}
+
+export type CreateQuoteRequest = Omit<InferInput<typeof createQuoteValidator>, 'authorId'> & {
+  authorId: number
 }

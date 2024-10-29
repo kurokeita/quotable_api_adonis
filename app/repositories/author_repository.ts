@@ -1,8 +1,8 @@
-import { AuthorFactory } from '#database/factories/author_factory'
 import Author from '#models/author'
 import { CreateAuthorRequest, IndexAllAuthorsRequest, UpdateAuthorRequest } from '#requests/authors'
 import slugify from '#utils/slugify'
 import db from '@adonisjs/lucid/services/db'
+import { TransactionClientContract } from '@adonisjs/lucid/types/database'
 
 export default class AuthorRepository {
   async index(input: IndexAllAuthorsRequest) {
@@ -17,13 +17,14 @@ export default class AuthorRepository {
 
   async getById(
     id: number,
-    options: { findOrFail?: boolean; withQuoteCount?: boolean } = {
-      findOrFail: true,
-      withQuoteCount: true,
-    }
+    options: {
+      findOrFail?: boolean
+      withQuoteCount?: boolean
+      transaction?: TransactionClientContract
+    } = {}
   ) {
-    const query = Author.query().where('id', id)
-    const { findOrFail = true, withQuoteCount = true } = options
+    const { findOrFail = true, withQuoteCount = true, transaction = undefined } = options
+    const query = Author.query({ client: transaction }).where('id', id)
 
     if (withQuoteCount) {
       query.withScopes((s) => s.withQuoteCount())
@@ -39,14 +40,20 @@ export default class AuthorRepository {
       .first()
   }
 
-  async create(input: CreateAuthorRequest) {
-    return await AuthorFactory.merge({
-      name: input.name,
-      slug: slugify(input.name),
-      link: input.link,
-      description: input.description,
-      bio: input.bio,
-    }).create()
+  async create(
+    input: CreateAuthorRequest,
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    return await Author.create(
+      {
+        name: input.name,
+        slug: slugify(input.name),
+        link: input.link,
+        description: input.description,
+        bio: input.bio,
+      },
+      { client: options.transaction }
+    )
   }
 
   // At this point, I'm trusting that the `authors` list are consisted of names that are unique and not existing in the database.
@@ -66,8 +73,15 @@ export default class AuthorRepository {
     return await Author.query().whereIn('name', [names].flat(Infinity))
   }
 
-  async update(id: number, input: Partial<UpdateAuthorRequest>) {
-    const author = await this.getById(id, { withQuoteCount: false })
+  async update(
+    id: number,
+    input: Partial<UpdateAuthorRequest>,
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    const author = await this.getById(id, {
+      withQuoteCount: false,
+      transaction: options.transaction,
+    })
 
     await author
       ?.merge({
@@ -82,8 +96,10 @@ export default class AuthorRepository {
     return author
   }
 
-  async delete(id: number) {
-    const author = await this.getById(id, { withQuoteCount: false })
+  async delete(id: number, options: { transaction?: TransactionClientContract } = {}) {
+    const { transaction = undefined } = options
+
+    const author = await this.getById(id, { withQuoteCount: false, transaction: transaction })
 
     await author?.delete()
 

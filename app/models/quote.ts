@@ -1,3 +1,4 @@
+import { compose } from '@adonisjs/core/helpers'
 import {
   BaseModel,
   beforeFetch,
@@ -9,11 +10,12 @@ import {
 } from '@adonisjs/lucid/orm'
 import type { ModelObject, ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import type { BelongsTo, ManyToMany } from '@adonisjs/lucid/types/relations'
+import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import { DateTime } from 'luxon'
 import Author from './author.js'
 import Tag from './tag.js'
 
-export default class Quote extends BaseModel {
+export default class Quote extends compose(BaseModel, SoftDeletes) {
   @column({ isPrimary: true })
   declare id: number
 
@@ -41,12 +43,6 @@ export default class Quote extends BaseModel {
   @computed()
   get length(): number {
     return this.content.length
-  }
-
-  @beforeFetch()
-  @beforeFind()
-  static ignoreDeleted(query: ModelQueryBuilderContract<typeof Quote>) {
-    query.whereNull('deleted_at')
   }
 
   @beforeFetch()
