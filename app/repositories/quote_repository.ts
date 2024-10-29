@@ -1,17 +1,23 @@
 import { OrderEnum } from '#enums/order_enum'
 import Quote from '#models/quote'
 import {
+  CreateQuoteRequest,
   GetRandomQuoteRequest,
   GetRandomQuotesRequest,
   IndexAllQuotesRequest,
+  UpdateQuoteRequest,
 } from '#requests/quotes'
 import db from '@adonisjs/lucid/services/db'
+import { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import { DateTime } from 'luxon'
 
 export default class QuoteRepository {
-  async index(input: IndexAllQuotesRequest) {
-    const query = Quote.query()
+  async index(
+    input: IndexAllQuotesRequest,
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    const query = Quote.query({ client: options.transaction })
 
     this.filterLength(query, input.minLength, '>=')
       .filterLength(query, input.maxLength, '<=')
@@ -21,8 +27,11 @@ export default class QuoteRepository {
     return await query.orderBy(input.sortBy, input.order).paginate(input.page, input.limit)
   }
 
-  async getRandomQuote(input: GetRandomQuoteRequest) {
-    const query = Quote.query()
+  async getRandomQuote(
+    input: GetRandomQuoteRequest,
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    const query = Quote.query({ client: options.transaction })
 
     this.filterLength(query, input.minLength, '>=')
       .filterLength(query, input.maxLength, '<=')
@@ -33,8 +42,11 @@ export default class QuoteRepository {
     return await query.orderByRaw('RAND()').first()
   }
 
-  async getRandomQuotes(input: GetRandomQuotesRequest) {
-    const query = Quote.query()
+  async getRandomQuotes(
+    input: GetRandomQuotesRequest,
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    const query = Quote.query({ client: options.transaction })
 
     this.filterLength(query, input.minLength, '>=')
       .filterLength(query, input.maxLength, '<=')
@@ -61,8 +73,49 @@ export default class QuoteRepository {
     })
   }
 
-  async getById(id: number) {
-    return await Quote.find(id)
+  async getById(
+    id: number,
+    options: { findOrFail?: boolean; transactions?: TransactionClientContract } = {}
+  ) {
+    const { findOrFail = true, transactions = undefined } = options
+
+    return findOrFail
+      ? await Quote.findOrFail(id, { client: transactions })
+      : await Quote.find(id, { client: transactions })
+  }
+
+  async create(
+    input: CreateQuoteRequest,
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    return await Quote.create(
+      { content: input.content, authorId: input.authorId },
+      { client: options.transaction }
+    )
+  }
+
+  async update(
+    id: number,
+    input: Partial<UpdateQuoteRequest>,
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    const quote = await this.getById(id, { transactions: options.transaction })
+
+    quote
+      ?.merge({
+        content: input.content ?? quote.content,
+      })
+      ?.save()
+
+    return quote as Quote
+  }
+
+  async delete(id: number, options: { transaction?: TransactionClientContract } = {}) {
+    const quote = await this.getById(id, { transactions: options.transaction })
+
+    await quote?.delete()
+
+    return quote as Quote
   }
 
   private filterLength(

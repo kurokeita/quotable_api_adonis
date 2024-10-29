@@ -42,6 +42,8 @@ router.use([
  * the routes or the routes group.
  */
 export const middleware = router.named({
+  resourceExists: () => import('#middleware/resource_exists_middleware'),
   auth: () => import('#middleware/auth_middleware'),
   serverMonitor: () => import('#middleware/server_monitor_middleware'),
+  resourceManipulation: () => import('#middleware/resources_manipulation_middleware'),
 })

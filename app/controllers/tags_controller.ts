@@ -8,9 +8,7 @@ import { inject } from '@adonisjs/core'
 export default class TagsController {
   @inject()
   async index({ request }: HttpContext, service: IndexAllTagsService) {
-    const query = request.qs()
-
-    const data: IndexAllTagsRequest = await indexAllTagsValidator.validate(query)
+    const data: IndexAllTagsRequest = await request.validateUsing(indexAllTagsValidator)
 
     const result = await service.handle(data)
 
