@@ -27,5 +27,5 @@ jobs:
         file: ./Dockerfile
         push: true
         tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/quotable:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/quotable:$(date +%s)
+          ${{ vars.DOCKERHUB_USERNAME }}/quotable:latest
+          ${{ vars.DOCKERHUB_USERNAME }}/quotable:$(date +%s)
