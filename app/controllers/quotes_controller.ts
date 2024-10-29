@@ -20,50 +20,33 @@ import {
   indexAllQuotesValidator,
   updateQuoteValidator,
 } from '#validators/quote'
-import { errors, inject } from '@adonisjs/core'
+import { inject } from '@adonisjs/core'
 
 export default class QuotesController {
   @inject()
   async index({ request }: HttpContext, service: IndexAllQuoteSerive) {
-    const query = request.qs()
-
-    const data: IndexAllQuotesRequest = await indexAllQuotesValidator.validate(query)
+    const data: IndexAllQuotesRequest = await request.validateUsing(indexAllQuotesValidator)
 
     return await service.handle(data)
   }
 
   @inject()
   async getRandom({ request }: HttpContext, service: GetRandomQuoteService) {
-    const query = request.qs()
-
-    const data: GetRandomQuoteRequest = await getRandomQuoteValidator.validate(query)
+    const data: GetRandomQuoteRequest = await request.validateUsing(getRandomQuoteValidator)
 
     return await service.handle(data)
   }
 
   @inject()
   async getRandomQuotes({ request }: HttpContext, service: GetRandomQuotesService) {
-    const query = request.qs()
-
-    const data: GetRandomQuotesRequest = await getRandomQuotesValidator.validate(query)
+    const data: GetRandomQuotesRequest = await request.validateUsing(getRandomQuotesValidator)
 
     return await service.handle(data)
   }
 
   @inject()
   async getById({ request }: HttpContext, service: GetQuoteByIdService) {
-    const result = await service.handle(request.param('id'))
-
-    if (!result) {
-      throw errors.E_HTTP_EXCEPTION.invoke(
-        {
-          message: 'Can not find the quote',
-        },
-        404
-      )
-    }
-
-    return result
+    return await service.handle(request.param('id'))
   }
 
   @inject()
