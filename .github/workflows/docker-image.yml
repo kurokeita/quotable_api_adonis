@@ -1,14 +1,14 @@
 name: Build and Publish Release Image
 
 on:
-  schedule:
-    - cron: '0 10 * * *'
   push:
     branches:
-      - '**'
+      - 'main'
     tags:
       - 'v*.*.*'
   pull_request:
+    branches: 
+      - 'main'
 
 jobs:
   build_and_push_docker_image:
