@@ -1,18 +1,12 @@
-import {
-  BaseModel,
-  beforeFetch,
-  beforeFind,
-  column,
-  computed,
-  hasMany,
-  scope,
-} from '@adonisjs/lucid/orm'
+import { compose } from '@adonisjs/core/helpers'
+import { BaseModel, column, computed, hasMany, scope } from '@adonisjs/lucid/orm'
 import type { ModelObject, ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
+import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import { DateTime } from 'luxon'
 import Quote from './quote.js'
 
-export default class Author extends BaseModel {
+export default class Author extends compose(BaseModel, SoftDeletes) {
   @column({ isPrimary: true })
   declare id: number
 
@@ -38,7 +32,7 @@ export default class Author extends BaseModel {
   declare updatedAt: DateTime
 
   @column.dateTime({ serializeAs: null })
-  declare deletedAt: DateTime
+  declare deletedAt: DateTime | null
 
   @hasMany(() => Quote)
   declare quotes: HasMany<typeof Quote>
@@ -46,12 +40,6 @@ export default class Author extends BaseModel {
   @computed()
   get quoteCount(): number | null {
     return this.$extras?.quoteCount ?? null
-  }
-
-  @beforeFetch()
-  @beforeFind()
-  static ignoreDeleted(query: ModelQueryBuilderContract<typeof Author>) {
-    query.whereNull('deleted_at')
   }
 
   static withQuoteCount = scope((query: ModelQueryBuilderContract<typeof Author>) => {

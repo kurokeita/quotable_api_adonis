@@ -6,9 +6,11 @@ import {
 } from '#requests/authors'
 import CreateAuthorService from '#services/authors/create_author_service'
 import CreateAuthorsService from '#services/authors/create_authors_service'
+import DeleteAuthorService from '#services/authors/delete_author_service'
 import GetAuthorByIdService from '#services/authors/get_author_by_id_service'
 import GetAuthorBySlugService from '#services/authors/get_author_by_slug'
 import IndexAllAuthorsService from '#services/authors/index_all_author_service'
+import UpdateAuthorService from '#services/authors/update_author_service'
 import {
   createAuthorsValidator,
   createAuthorValidator,
@@ -28,18 +30,7 @@ export default class AuthorsController {
 
   @inject()
   async getById({ request }: HttpContext, service: GetAuthorByIdService) {
-    const result = await service.handle(request.param('id'))
-
-    if (!result) {
-      throw errors.E_HTTP_EXCEPTION.invoke(
-        {
-          message: 'Can not find the author',
-        },
-        404
-      )
-    }
-
-    return result
+    return await service.handle(request.param('id'))
   }
 
   @inject()
@@ -73,13 +64,18 @@ export default class AuthorsController {
   }
 
   @inject()
-  async update({ request }: HttpContext) {
+  async update({ request }: HttpContext, service: UpdateAuthorService) {
+    const id = request.param('id')
+
     const data: UpdateAuthorRequest = await request.validateUsing(updateAuthorValidator, {
-      meta: { authorId: request.param('id') },
+      meta: { authorId: id },
     })
 
-    // TODO: create service and repository method to patch data for author
+    return await service.handle(id, data)
+  }
 
-    return data
+  @inject()
+  async delete({ request }: HttpContext, service: DeleteAuthorService) {
+    return await service.handle(request.param('id'))
   }
 }

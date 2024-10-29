@@ -1,6 +1,6 @@
 import { AuthorFactory } from '#database/factories/author_factory'
 import Author from '#models/author'
-import { CreateAuthorRequest, IndexAllAuthorsRequest } from '#requests/authors'
+import { CreateAuthorRequest, IndexAllAuthorsRequest, UpdateAuthorRequest } from '#requests/authors'
 import slugify from '#utils/slugify'
 import db from '@adonisjs/lucid/services/db'
 
@@ -15,11 +15,21 @@ export default class AuthorRepository {
     return await query.orderBy(input.sortBy, input.order).paginate(input.page, input.limit)
   }
 
-  async getById(id: number) {
-    return await Author.query()
-      .withScopes((s) => s.withQuoteCount())
-      .where('id', id)
-      .first()
+  async getById(
+    id: number,
+    options: { findOrFail?: boolean; withQuoteCount?: boolean } = {
+      findOrFail: true,
+      withQuoteCount: true,
+    }
+  ) {
+    const query = Author.query().where('id', id)
+    const { findOrFail = true, withQuoteCount = true } = options
+
+    if (withQuoteCount) {
+      query.withScopes((s) => s.withQuoteCount())
+    }
+
+    return findOrFail ? await query.firstOrFail() : await query.first()
   }
 
   async getBySlug(slug: string) {
@@ -54,6 +64,30 @@ export default class AuthorRepository {
 
   async getByNames(names: string[] | string) {
     return await Author.query().whereIn('name', [names].flat(Infinity))
+  }
+
+  async update(id: number, input: Partial<UpdateAuthorRequest>) {
+    const author = await this.getById(id, { withQuoteCount: false })
+
+    await author
+      ?.merge({
+        name: input.name ?? author.name,
+        slug: input.name ? slugify(input.name) : author.slug,
+        link: input.link ?? author.link,
+        description: input.description ?? author.description,
+        bio: input.bio ?? author.bio,
+      })
+      .save()
+
+    return author
+  }
+
+  async delete(id: number) {
+    const author = await this.getById(id, { withQuoteCount: false })
+
+    await author?.delete()
+
+    return author
   }
 
   async exists(name: string, ignoreId: number | null = null) {
