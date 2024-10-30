@@ -1,5 +1,15 @@
 {
   "version": 2,
+  "builds": [
+    {
+      "src": "bin/server.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["**"],
+        "maxLambdaSize": "50mb"
+      }
+    }
+  ],
   "routes": [
     {
       "src": "/(.*)",
