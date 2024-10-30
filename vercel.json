@@ -3,7 +3,7 @@
   "builds": [
     {
       "src": "bin/server.ts",
-      "use": "@vercel/node",
+      "use": "@vercel/npm",
       "config": {
         "includeFiles": ["**"],
         "maxLambdaSize": "50mb"
