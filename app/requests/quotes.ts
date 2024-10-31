@@ -3,6 +3,7 @@ import {
   getRandomQuotesValidator,
   getRandomQuoteValidator,
   indexAllQuotesValidator,
+  massCreateQuotesValidator,
   updateQuoteValidator,
 } from '#validators/quote'
 import { InferInput } from '@vinejs/vine/types'
@@ -39,3 +40,10 @@ export type CreateQuoteRequest = Omit<InferInput<typeof createQuoteValidator>, '
 }
 
 export type UpdateQuoteRequest = InferInput<typeof updateQuoteValidator>
+
+export type MassCreateQuotesRequest = Omit<
+  InferInput<typeof massCreateQuotesValidator>,
+  'quotes'
+> & {
+  quotes: CreateQuoteRequest[]
+}

@@ -5,11 +5,15 @@ export default class SyncTagsService extends TagService {
   async handle(quote: Quote, tags: string[]) {
     const existedTags = await this.repository().getByNames(tags)
 
-    const newTags = await this.repository().createMultiple(
-      tags.filter((tag) => !existedTags.find((existedTag) => existedTag.name === tag))
-    )
+    if (existedTags.length !== tags.length) {
+      const newTags = await this.repository().createMultiple(
+        tags.filter((tag) => !existedTags.find((existedTag) => existedTag.name === tag))
+      )
 
-    await quote.related('tags').sync([...existedTags, ...newTags].map((t) => t.id))
+      existedTags.push(...newTags)
+    }
+
+    await quote.related('tags').sync([...existedTags].map((t) => t.id))
 
     await quote.load('tags')
 

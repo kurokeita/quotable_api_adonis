@@ -1,8 +1,6 @@
 import { OrderEnum } from '#enums/order_enum'
 import { QuotesOrderByEnum } from '#enums/quotes'
-import AuthorRepository from '#repositories/author_repository'
 import { getDefaultValue } from '#utils/helpers'
-import app from '@adonisjs/core/services/app'
 import vine from '@vinejs/vine'
 
 export const indexAllQuotesValidator = vine.compile(
@@ -54,27 +52,24 @@ export const getRandomQuotesValidator = vine.compile(
   })
 )
 
-export const createQuoteValidator = vine.compile(
-  vine.object({
-    authorId: vine
-      .number()
-      .exists(async (_db, value) => {
-        const authorRepository = await app.container.make(AuthorRepository)
-        return (
-          (await authorRepository.getById(Number.parseInt(value), { findOrFail: false })) !== null
-        )
-      })
-      .optional()
-      .requiredIfMissing('author'),
-    author: vine.string().optional().requiredIfMissing('authorId'),
-    content: vine.string(),
-    tags: vine.array(vine.string()).optional(),
-  })
-)
+export const newQuoteSchema = vine.object({
+  authorId: vine.number().optional().requiredIfMissing('author'),
+  author: vine.string().optional().requiredIfMissing('authorId'),
+  content: vine.string(),
+  tags: vine.array(vine.string()).optional(),
+})
+
+export const createQuoteValidator = vine.compile(newQuoteSchema)
 
 export const updateQuoteValidator = vine.compile(
   vine.object({
     content: vine.string().optional(),
     tags: vine.array(vine.string()).optional(),
+  })
+)
+
+export const massCreateQuotesValidator = vine.compile(
+  vine.object({
+    quotes: vine.array(newQuoteSchema).distinct('content'),
   })
 )

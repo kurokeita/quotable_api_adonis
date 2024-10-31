@@ -11,6 +11,7 @@ router
     router
       .group(() => {
         router.post('/', [QuotesController, 'create'])
+        router.post('/mass', [QuotesController, 'massCreate'])
         router.patch('/:id', [QuotesController, 'update'])
         router.delete('/:id', [QuotesController, 'delete'])
       })

@@ -33,6 +33,23 @@ export default class AuthorRepository {
     return findOrFail ? await query.firstOrFail() : await query.first()
   }
 
+  async getByIds(
+    ids: number[],
+    options: {
+      withQuoteCount?: boolean
+      transaction?: TransactionClientContract
+    } = {}
+  ) {
+    const { withQuoteCount = true, transaction = undefined } = options
+    const query = Author.query({ client: transaction }).whereIn('id', ids)
+
+    if (withQuoteCount) {
+      query.withScopes((s) => s.withQuoteCount())
+    }
+
+    return await query.exec()
+  }
+
   async getBySlug(
     slug: string,
     options: {
@@ -51,6 +68,23 @@ export default class AuthorRepository {
     return findOrFail ? await query.firstOrFail() : await query.first()
   }
 
+  async getBySlugs(
+    slugs: string[],
+    options: {
+      withQuoteCount?: boolean
+      transaction?: TransactionClientContract
+    } = {}
+  ) {
+    const { withQuoteCount = true, transaction = undefined } = options
+    const query = Author.query({ client: transaction }).whereIn('slug', slugs)
+
+    if (withQuoteCount) {
+      query.withScopes((s) => s.withQuoteCount())
+    }
+
+    return await query.exec()
+  }
+
   async create(
     input: CreateAuthorRequest,
     options: { transaction?: TransactionClientContract } = {}
@@ -58,7 +92,7 @@ export default class AuthorRepository {
     return await Author.create(
       {
         name: input.name,
-        slug: slugify(input.name),
+        slug: slugify(input.name, { lower: true }),
         link: input.link,
         description: input.description,
         bio: input.bio,
@@ -72,7 +106,9 @@ export default class AuthorRepository {
   async createMultiple(authors: Author[]) {
     // Use this instead of the `Author.createMany` to avoid multiple insert queries.
     // Documentation: https://lucid.adonisjs.com/docs/crud-operations#createmany
-    await db.table(Author.table).multiInsert(authors)
+    await db
+      .table(Author.table)
+      .multiInsert(authors.map((a) => ({ ...a, slug: slugify(a.name, { lower: true }) })))
 
     return await Author.query().whereIn(
       'slug',

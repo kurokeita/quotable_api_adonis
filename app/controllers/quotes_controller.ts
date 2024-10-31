@@ -5,23 +5,26 @@ import {
   GetRandomQuoteRequest,
   GetRandomQuotesRequest,
   IndexAllQuotesRequest,
+  MassCreateQuotesRequest,
   UpdateQuoteRequest,
 } from '#requests/quotes'
 import CreateQuoteService from '#services/quotes/create_quote_service'
+import DeleteQuoteService from '#services/quotes/delete_quote_service'
 import GetQuoteByIdService from '#services/quotes/get_quote_by_id_service'
 import GetRandomQuoteService from '#services/quotes/get_random_quote_service'
 import GetRandomQuotesService from '#services/quotes/get_random_quotes_service'
 import IndexAllQuoteSerive from '#services/quotes/index_all_quote_service'
+import MassCreateQuotesService from '#services/quotes/mass_create_quote_service'
 import UpdateQuoteService from '#services/quotes/update_quote_service'
 import {
   createQuoteValidator,
   getRandomQuotesValidator,
   getRandomQuoteValidator,
   indexAllQuotesValidator,
+  massCreateQuotesValidator,
   updateQuoteValidator,
 } from '#validators/quote'
 import { inject } from '@adonisjs/core'
-import DeleteQuoteService from '#services/quotes/delete_quote_service'
 
 export default class QuotesController {
   @inject()
@@ -53,6 +56,13 @@ export default class QuotesController {
   @inject()
   async create({ request }: HttpContext, service: CreateQuoteService) {
     const data: CreateQuoteRequest = await request.validateUsing(createQuoteValidator)
+
+    return await service.handle(data)
+  }
+
+  @inject()
+  async massCreate({ request }: HttpContext, service: MassCreateQuotesService) {
+    const data: MassCreateQuotesRequest = await request.validateUsing(massCreateQuotesValidator)
 
     return await service.handle(data)
   }

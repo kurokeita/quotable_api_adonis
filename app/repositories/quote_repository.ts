@@ -1,7 +1,6 @@
 import { OrderEnum } from '#enums/order_enum'
 import Quote from '#models/quote'
 import {
-  CreateQuoteRequest,
   GetRandomQuoteRequest,
   GetRandomQuotesRequest,
   IndexAllQuotesRequest,
@@ -11,6 +10,11 @@ import db from '@adonisjs/lucid/services/db'
 import { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import { DateTime } from 'luxon'
+
+export type NewQuoteSchema = {
+  content: string
+  author_id: number
+}
 
 export default class QuoteRepository {
   async index(
@@ -84,14 +88,8 @@ export default class QuoteRepository {
       : await Quote.find(id, { client: transactions })
   }
 
-  async create(
-    input: CreateQuoteRequest,
-    options: { transaction?: TransactionClientContract } = {}
-  ) {
-    return await Quote.create(
-      { content: input.content, authorId: input.authorId },
-      { client: options.transaction }
-    )
+  async create(input: NewQuoteSchema, options: { transaction?: TransactionClientContract } = {}) {
+    return await Quote.create(input, { client: options.transaction })
   }
 
   async update(
@@ -108,6 +106,22 @@ export default class QuoteRepository {
       ?.save()
 
     return quote as Quote
+  }
+
+  async createMultiple(
+    input: NewQuoteSchema[],
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    if (options.transaction) {
+      await options.transaction.insertQuery().table(Quote.table).multiInsert(input)
+    } else {
+      await db.table(Quote.table).multiInsert(input)
+    }
+
+    return await Quote.query({ client: options.transaction }).whereIn(
+      'content',
+      input.map((q) => q.content)
+    )
   }
 
   async delete(id: number, options: { transaction?: TransactionClientContract } = {}) {
