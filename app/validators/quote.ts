@@ -56,12 +56,17 @@ export const getRandomQuotesValidator = vine.compile(
 
 export const createQuoteValidator = vine.compile(
   vine.object({
-    authorId: vine.number().exists(async (_db, value) => {
-      const authorRepository = await app.container.make(AuthorRepository)
-      return (
-        (await authorRepository.getById(Number.parseInt(value), { findOrFail: false })) !== null
-      )
-    }),
+    authorId: vine
+      .number()
+      .exists(async (_db, value) => {
+        const authorRepository = await app.container.make(AuthorRepository)
+        return (
+          (await authorRepository.getById(Number.parseInt(value), { findOrFail: false })) !== null
+        )
+      })
+      .optional()
+      .requiredIfMissing('author'),
+    author: vine.string().optional().requiredIfMissing('authorId'),
     content: vine.string(),
     tags: vine.array(vine.string()).optional(),
   })

@@ -33,11 +33,22 @@ export default class AuthorRepository {
     return findOrFail ? await query.firstOrFail() : await query.first()
   }
 
-  async getBySlug(slug: string) {
-    return await Author.query()
-      .withScopes((s) => s.withQuoteCount())
-      .where('slug', slug)
-      .first()
+  async getBySlug(
+    slug: string,
+    options: {
+      findOrFail?: boolean
+      withQuoteCount?: boolean
+      transaction?: TransactionClientContract
+    } = {}
+  ) {
+    const { findOrFail = true, withQuoteCount = true, transaction = undefined } = options
+    const query = Author.query({ client: transaction }).where('slug', slug)
+
+    if (withQuoteCount) {
+      query.withScopes((s) => s.withQuoteCount())
+    }
+
+    return findOrFail ? await query.firstOrFail() : await query.first()
   }
 
   async create(

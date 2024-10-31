@@ -35,7 +35,7 @@ export type GetRandomQuotesRequest = Omit<
 }
 
 export type CreateQuoteRequest = Omit<InferInput<typeof createQuoteValidator>, 'authorId'> & {
-  authorId: number
+  authorId: number | null | undefined
 }
 
 export type UpdateQuoteRequest = InferInput<typeof updateQuoteValidator>
