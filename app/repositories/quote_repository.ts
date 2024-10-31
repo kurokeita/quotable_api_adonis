@@ -19,44 +19,68 @@ export type NewQuoteSchema = {
 export default class QuoteRepository {
   async index(
     input: IndexAllQuotesRequest,
-    options: { transaction?: TransactionClientContract } = {}
+    options: {
+      withRelations?: boolean
+      transaction?: TransactionClientContract
+    } = {}
   ) {
-    const query = Quote.query({ client: options.transaction })
+    const { withRelations = true, transaction = undefined } = options
+    const query = Quote.query({ client: transaction })
 
     this.filterLength(query, input.minLength, '>=')
       .filterLength(query, input.maxLength, '<=')
       .filterAuthor(query, input.author)
       .filterTags(query, input.tags)
+
+    if (withRelations) {
+      query.withScopes((s) => s.queryBasicRelationships())
+    }
 
     return await query.orderBy(input.sortBy, input.order).paginate(input.page, input.limit)
   }
 
   async getRandomQuote(
     input: GetRandomQuoteRequest,
-    options: { transaction?: TransactionClientContract } = {}
+    options: {
+      withRelations?: boolean
+      transaction?: TransactionClientContract
+    } = {}
   ) {
-    const query = Quote.query({ client: options.transaction })
+    const { withRelations = true, transaction = undefined } = options
+    const query = Quote.query({ client: transaction })
 
     this.filterLength(query, input.minLength, '>=')
       .filterLength(query, input.maxLength, '<=')
       .filterAuthor(query, input.author)
       .filterTags(query, input.tags)
       .queryContent(query, input.query)
+
+    if (withRelations) {
+      query.withScopes((s) => s.queryBasicRelationships())
+    }
 
     return await query.orderByRaw('RAND()').first()
   }
 
   async getRandomQuotes(
     input: GetRandomQuotesRequest,
-    options: { transaction?: TransactionClientContract } = {}
+    options: {
+      withRelations?: boolean
+      transaction?: TransactionClientContract
+    } = {}
   ) {
-    const query = Quote.query({ client: options.transaction })
+    const { withRelations = true, transaction = undefined } = options
+    const query = Quote.query({ client: transaction })
 
     this.filterLength(query, input.minLength, '>=')
       .filterLength(query, input.maxLength, '<=')
       .filterAuthor(query, input.author)
       .filterTags(query, input.tags)
       .queryContent(query, input.query)
+
+    if (withRelations) {
+      query.withScopes((s) => s.queryBasicRelationships())
+    }
 
     const quotes = await query.orderByRaw('RAND()').limit(input.limit)
 
@@ -79,13 +103,34 @@ export default class QuoteRepository {
 
   async getById(
     id: number,
-    options: { findOrFail?: boolean; transactions?: TransactionClientContract } = {}
+    options: {
+      withRelations?: boolean
+      findOrFail?: boolean
+      transactions?: TransactionClientContract
+    } = {}
   ) {
-    const { findOrFail = true, transactions = undefined } = options
+    const { withRelations = true, findOrFail = true, transactions = undefined } = options
+    const query = Quote.query({ client: transactions }).where('id', id)
 
-    return findOrFail
-      ? await Quote.findOrFail(id, { client: transactions })
-      : await Quote.find(id, { client: transactions })
+    if (withRelations) {
+      query.withScopes((s) => s.queryBasicRelationships())
+    }
+
+    return findOrFail ? await query.firstOrFail() : await query.first()
+  }
+
+  async getByContents(
+    contents: string[],
+    options: { withRelations?: boolean; transaction?: TransactionClientContract } = {}
+  ) {
+    const { withRelations = true, transaction = undefined } = options
+    const query = Quote.query({ client: transaction }).whereIn('content', contents)
+
+    if (withRelations) {
+      query.withScopes((s) => s.queryBasicRelationships())
+    }
+
+    return await query.exec()
   }
 
   async create(input: NewQuoteSchema, options: { transaction?: TransactionClientContract } = {}) {

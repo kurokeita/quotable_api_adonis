@@ -10,6 +10,8 @@ import QuoteService from './quote_service.js'
 
 @inject()
 export default class MassCreateQuotesService extends QuoteService {
+  private CHUNK_SIZE = 500
+
   constructor(
     repo: QuoteRepository,
     private authorRepository: AuthorRepository,
@@ -20,6 +22,12 @@ export default class MassCreateQuotesService extends QuoteService {
   }
 
   async handle(input: MassCreateQuotesRequest) {
+    input.quotes = await this.filterExistingQuotes(input.quotes)
+
+    if (input.quotes.length === 0) {
+      return []
+    }
+
     await db.beginGlobalTransaction()
 
     try {
@@ -54,6 +62,25 @@ export default class MassCreateQuotesService extends QuoteService {
       await db.rollbackGlobalTransaction()
       throw error
     }
+  }
+
+  private async filterExistingQuotes(data: CreateQuoteRequest[]) {
+    const canBeUsed: CreateQuoteRequest[] = []
+
+    for (let i = 0; i < data.length; i += this.CHUNK_SIZE) {
+      const chunk = data.slice(i, i + this.CHUNK_SIZE)
+      const quotes = await this.repository().getByContents(
+        chunk.map((r) => r.content),
+        { withRelations: false }
+      )
+
+      const existedQuotes = quotes.map((q) => q.content)
+      const nonExistedQuotes = chunk.filter((r) => !existedQuotes.includes(r.content))
+
+      canBeUsed.push(...nonExistedQuotes)
+    }
+
+    return canBeUsed
   }
 
   private async processQuotesBySlug(data: CreateQuoteRequest[]) {
