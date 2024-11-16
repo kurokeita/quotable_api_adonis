@@ -55,8 +55,15 @@ export const getRandomQuotesValidator = vine.compile(
 export const newQuoteSchema = vine.object({
   authorId: vine.number().optional().requiredIfMissing('author'),
   author: vine.string().optional().requiredIfMissing('authorId'),
-  content: vine.string(),
-  tags: vine.array(vine.string()).optional(),
+  content: vine.string().trim(),
+  tags: vine
+    .array(
+      vine
+        .string()
+        .trim()
+        .regex(/^[a-zA-Z0-9\s-]+$/)
+    )
+    .optional(),
 })
 
 export const createQuoteValidator = vine.compile(newQuoteSchema)
@@ -64,7 +71,14 @@ export const createQuoteValidator = vine.compile(newQuoteSchema)
 export const updateQuoteValidator = vine.compile(
   vine.object({
     content: vine.string().optional(),
-    tags: vine.array(vine.string()).optional(),
+    tags: vine
+      .array(
+        vine
+          .string()
+          .trim()
+          .regex(/^[a-zA-Z0-9\s-]+$/)
+      )
+      .optional(),
   })
 )
 

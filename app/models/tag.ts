@@ -22,13 +22,15 @@ export default class Tag extends compose(BaseModel, SoftDeletes) {
   @column.dateTime({ serializeAs: null })
   declare deletedAt: DateTime
 
-  @manyToMany(() => Quote)
+  @manyToMany(() => Quote, { pivotTable: Tag.quoteTagPivotTable })
   declare quotes: ManyToMany<typeof Quote>
 
   @computed()
   get quoteCount(): number | null {
     return this.$extras?.quoteCount ?? null
   }
+
+  static quoteTagPivotTable = 'quote_tag'
 
   static withQuoteCount = scope((query: ModelQueryBuilderContract<typeof Tag>) => {
     query.withCount('quotes', (q) => q.as('quoteCount'))

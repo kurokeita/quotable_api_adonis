@@ -17,15 +17,18 @@ export default class TagRepository {
     return await Tag.query({ client: options.transaction }).whereIn('name', names)
   }
 
-  async createMultiple(names: string[], options: { transaction?: TransactionClientContract } = {}) {
-    const toInsert = names.map((n) => ({ name: n }))
+  /**
+   * Upsert multiple tags at once. If a tag with the same name already exists,
+   * it will be ignored and the existing tag will be returned.
+   */
+  async upsertMultiple(names: string[], options: { transaction?: TransactionClientContract } = {}) {
+    const uniqueNames = [...new Set(names)]
+    const client = options.transaction || db
+    const insert = client.table(Tag.table).knexQuery.insert(uniqueNames.map((n) => ({ name: n })))
 
-    if (options.transaction) {
-      await options.transaction.insertQuery().table(Tag.table).multiInsert(toInsert)
-    } else {
-      await db.table(Tag.table).multiInsert(toInsert)
-    }
+    await client.rawQuery('? ON DUPLICATE KEY UPDATE id = id', [insert])
 
-    return await this.getByNames(names, options)
+    // Return all tags (both newly created and existing ones)
+    return await this.getByNames(uniqueNames, options)
   }
 }

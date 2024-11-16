@@ -119,6 +119,23 @@ export default class QuoteRepository {
     return findOrFail ? await query.firstOrFail() : await query.first()
   }
 
+  async getByIds(
+    ids: number[],
+    options: {
+      withRelations?: boolean
+      transaction?: TransactionClientContract
+    } = {}
+  ) {
+    const { withRelations = true, transaction = undefined } = options
+    const query = Quote.query({ client: transaction }).whereIn('id', ids)
+
+    if (withRelations) {
+      query.withScopes((s) => s.queryBasicRelationships())
+    }
+
+    return await query
+  }
+
   async getByContents(
     contents: string[],
     options: { withRelations?: boolean; transaction?: TransactionClientContract } = {}

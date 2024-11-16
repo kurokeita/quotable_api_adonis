@@ -29,7 +29,7 @@ export default class Quote extends compose(BaseModel, SoftDeletes) {
   @belongsTo(() => Author)
   declare author: BelongsTo<typeof Author>
 
-  @manyToMany(() => Tag)
+  @manyToMany(() => Tag, { pivotTable: Tag.quoteTagPivotTable })
   declare tags: ManyToMany<typeof Tag>
 
   @computed()

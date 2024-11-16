@@ -4,7 +4,6 @@ import { CreateQuoteRequest } from '#requests/quotes'
 import GetAuthorByIdService from '#services/authors/get_author_by_id_service'
 import GetAuthorBySlugService from '#services/authors/get_author_by_slug'
 import SyncTagsService from '#services/tags/sync_tags_service'
-import slugify from '#utils/slugify'
 import { inject } from '@adonisjs/core'
 import db from '@adonisjs/lucid/services/db'
 import QuoteService from './quote_service.js'
@@ -29,7 +28,7 @@ export default class CreateQuoteService extends QuoteService {
 
       authorId = input.authorId
     } else {
-      const author = (await this.getAuthorBySlugService.handle(slugify(input.author ?? ''), {
+      const author = (await this.getAuthorBySlugService.handle(Author.getSlug(input.author ?? ''), {
         withQuoteCount: false,
       })) as Author
 

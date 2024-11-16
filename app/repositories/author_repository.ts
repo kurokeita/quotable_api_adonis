@@ -1,6 +1,5 @@
 import Author from '#models/author'
 import { CreateAuthorRequest, IndexAllAuthorsRequest, UpdateAuthorRequest } from '#requests/authors'
-import slugify from '#utils/slugify'
 import db from '@adonisjs/lucid/services/db'
 import { TransactionClientContract } from '@adonisjs/lucid/types/database'
 
@@ -92,7 +91,7 @@ export default class AuthorRepository {
     return await Author.create(
       {
         name: input.name,
-        slug: slugify(input.name, { lower: true }),
+        slug: Author.getSlug(input.name),
         link: input.link,
         description: input.description,
         bio: input.bio,
@@ -103,14 +102,19 @@ export default class AuthorRepository {
 
   // At this point, I'm trusting that the `authors` list are consisted of names that are unique and not existing in the database.
   // If somehow, there was a bug in validating the request, this method will throw a unique constraint error.
-  async createMultiple(authors: Author[]) {
+  async createMultiple(
+    authors: Author[],
+    options: { transaction?: TransactionClientContract } = {}
+  ) {
+    const client = options.transaction || db
+
     // Use this instead of the `Author.createMany` to avoid multiple insert queries.
     // Documentation: https://lucid.adonisjs.com/docs/crud-operations#createmany
-    await db
+    await client
       .table(Author.table)
-      .multiInsert(authors.map((a) => ({ ...a, slug: slugify(a.name, { lower: true }) })))
+      .multiInsert(authors.map((a) => ({ ...a, slug: Author.getSlug(a.name) })))
 
-    return await Author.query().whereIn(
+    return await Author.query({ client: options.transaction }).whereIn(
       'slug',
       authors.map((author) => author.slug)
     )
@@ -133,7 +137,7 @@ export default class AuthorRepository {
     await author
       ?.merge({
         name: input.name ?? author.name,
-        slug: input.name ? slugify(input.name) : author.slug,
+        slug: input.name ? Author.getSlug(input.name) : author.slug,
         link: input.link ?? author.link,
         description: input.description ?? author.description,
         bio: input.bio ?? author.bio,

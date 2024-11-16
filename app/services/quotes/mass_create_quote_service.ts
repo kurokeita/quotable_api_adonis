@@ -1,135 +1,201 @@
 import AuthorRepository from '#repositories/author_repository'
 import QuoteRepository, { NewQuoteSchema } from '#repositories/quote_repository'
-import TagRepository from '#repositories/tag_repository'
 import { CreateQuoteRequest, MassCreateQuotesRequest } from '#requests/quotes'
 import SyncTagsService from '#services/tags/sync_tags_service'
-import slugify from '#utils/slugify'
 import { inject } from '@adonisjs/core'
 import db from '@adonisjs/lucid/services/db'
 import QuoteService from './quote_service.js'
+import Author from '#models/author'
+import { TransactionClientContract } from '@adonisjs/lucid/types/database'
 
 @inject()
 export default class MassCreateQuotesService extends QuoteService {
+  /**
+   * Maximum number of quotes to process in a single database query
+   * to avoid memory issues and query size limits
+   */
   private CHUNK_SIZE = 500
 
   constructor(
     repo: QuoteRepository,
     private authorRepository: AuthorRepository,
-    private tagRepository: TagRepository,
     private syncTagsService: SyncTagsService
   ) {
     super(repo)
   }
 
   async handle(input: MassCreateQuotesRequest) {
-    input.quotes = await this.filterExistingQuotes(input.quotes)
-
-    if (input.quotes.length === 0) {
-      return []
-    }
-
-    await db.beginGlobalTransaction()
+    const trx = await db.transaction()
 
     try {
-      const quotesByAuthorName = await this.processQuotesBySlug(
-        input.quotes.filter((r) => r.authorId === undefined || r.authorId === null)
-      )
+      // Filter out quotes that already exist in the database
+      input.quotes = await this.filterExistingQuotes(input.quotes, trx)
 
-      const quotesByAuthorId = await this.processQuotesById(
-        input.quotes.filter((r) => r.authorId !== undefined && r.authorId !== null)
-      )
-
-      const dataToProcess = [...quotesByAuthorName, ...quotesByAuthorId]
-
-      const quotes = await this.repository().createMultiple(
-        dataToProcess.map((r) => ({ content: r.content, author_id: r.authorId }) as NewQuoteSchema)
-      )
-
-      await this.processTags(dataToProcess)
-
-      for (const q of quotes) {
-        const tags = [...new Set(input.quotes.find((r) => r.content === q.content)?.tags)]
-
-        if (tags && tags.length > 0) {
-          await this.syncTagsService.handle(q, tags)
-        }
+      if (input.quotes.length === 0) {
+        await trx.commit()
+        return []
       }
 
-      await db.commitGlobalTransaction()
+      // Create quotes and associate with authors (new or existing)
+      const quotes = await this.createQuotes(input, trx)
 
-      return quotes
+      // Prepare tag associations efficiently using Maps for O(1) lookups
+      const contentToQuote = new Map(quotes.map((q) => [q.content, q]))
+      const quoteTags = new Map<number, string[]>()
+
+      // Collect all tags for each quote, ensuring uniqueness
+      input.quotes.forEach((inputQuote) => {
+        const quote = contentToQuote.get(inputQuote.content)
+        if (quote && inputQuote.tags?.length) {
+          quoteTags.set(quote.id, [...new Set(inputQuote.tags)])
+        }
+      })
+
+      // Sync tags in bulk to avoid N+1 queries
+      await this.syncTagsService.handleBulk(quoteTags, { transaction: trx })
+
+      // Load created quotes with their relationships
+      const result = await this.repository().getByIds(
+        quotes.map((q) => q.id),
+        { transaction: trx }
+      )
+
+      await trx.commit()
+
+      return result
     } catch (error) {
-      await db.rollbackGlobalTransaction()
+      await trx.rollback()
       throw error
     }
   }
 
-  private async filterExistingQuotes(data: CreateQuoteRequest[]) {
-    const canBeUsed: CreateQuoteRequest[] = []
+  /**
+   * Filters out quotes that already exist in the database
+   * Processes in chunks to avoid memory issues with large datasets
+   */
+  private async filterExistingQuotes(data: CreateQuoteRequest[], trx: TransactionClientContract) {
+    if (data.length === 0) return []
 
-    for (let i = 0; i < data.length; i += this.CHUNK_SIZE) {
-      const chunk = data.slice(i, i + this.CHUNK_SIZE)
-      const quotes = await this.repository().getByContents(
-        chunk.map((r) => r.content),
-        { withRelations: false }
-      )
+    // Process in chunks to avoid memory issues
+    const results: CreateQuoteRequest[] = []
+    const chunks = Array.from({ length: Math.ceil(data.length / this.CHUNK_SIZE) }, (_, i) =>
+      data.slice(i * this.CHUNK_SIZE, (i + 1) * this.CHUNK_SIZE)
+    ).filter((chunk) => chunk.length > 0)
 
-      const existedQuotes = quotes.map((q) => q.content)
-      const nonExistedQuotes = chunk.filter((r) => !existedQuotes.includes(r.content))
+    // Get existing quotes for each chunk
+    for (const chunk of chunks) {
+      const contents = chunk.map((r) => r.content)
 
-      canBeUsed.push(...nonExistedQuotes)
+      // Skip empty chunks to avoid empty queries
+      if (contents.length === 0) continue
+
+      const existingQuotes = await this.repository().getByContents(contents, {
+        withRelations: false,
+        transaction: trx,
+      })
+
+      // Use Set for O(1) lookup of existing contents
+      const existingContents = new Set(existingQuotes.map((q) => q.content))
+
+      // Filter non-existing quotes
+      const newQuotes = chunk.filter((quote) => !existingContents.has(quote.content))
+      results.push(...newQuotes)
     }
 
-    return canBeUsed
+    return results
   }
 
-  private async processQuotesBySlug(data: CreateQuoteRequest[]) {
-    data = structuredClone(data)
-    data.map((r) => (r.author = slugify(r.author as string, { lower: true })))
+  /**
+   * Processes quotes that don't have author IDs
+   * Validates that the authors exist in the database
+   */
+  private async processQuotesBySlug(data: CreateQuoteRequest[], trx?: TransactionClientContract) {
+    if (data.length === 0) return []
 
-    const slugs = data.map((r) => r.author as string)
-
-    if (slugs.length > 0) {
-      const authors = await this.authorRepository.getBySlugs(slugs, { withQuoteCount: false })
-
-      data.forEach((r) => (r.authorId = authors.find((a) => a.slug === r.author)?.id))
-    }
-
-    return data.filter((r) => r.authorId !== undefined && r.authorId !== null)
-  }
-
-  private async processQuotesById(data: CreateQuoteRequest[]) {
-    data = structuredClone(data)
-    const ids = data.map((r) => r.authorId as number)
-
-    if (ids.length === 0) {
-      return []
-    }
-
-    const authors = await this.authorRepository.getByIds(ids, { withQuoteCount: false })
-
-    return data.filter((r) => authors.find((a) => a.id === r.authorId))
-  }
-
-  private async processTags(data: CreateQuoteRequest[]) {
-    data = structuredClone(data)
-    const tags = [
-      ...new Set(
-        data
-          .map((r) => r.tags)
-          .flat()
-          .filter((t) => t !== undefined && t !== null)
-      ),
-    ]
-
-    const existedTags = await this.tagRepository.getByNames(tags)
-
-    const tagsToCreate = tags.filter(
-      (tag) => !existedTags.find((existedTag) => existedTag.name === tag)
+    // Get authors by their slugs
+    const authors = await this.authorRepository.getBySlugs(
+      data.map((r) => Author.getSlug(r.author as string)),
+      {
+        withQuoteCount: false,
+        transaction: trx,
+      }
     )
 
-    if (tagsToCreate.length > 0) {
-      await this.tagRepository.createMultiple(tagsToCreate)
+    const authorMap = new Map(authors.map((a) => [a.slug, a.id]))
+
+    // Map quotes to authors and ensure type safety
+    return data
+      .map((quote) => ({
+        ...quote,
+        authorId: authorMap.get(Author.getSlug(quote.author as string)),
+      }))
+      .filter((quote: CreateQuoteRequest) => {
+        return typeof quote.authorId === 'number'
+      })
+  }
+
+  /**
+   * Processes quotes that already have author IDs
+   * Validates that the authors exist in the database
+   */
+  private async processQuotesById(data: CreateQuoteRequest[], trx?: TransactionClientContract) {
+    if (data.length === 0) return []
+
+    // Get unique author IDs to minimize database queries
+    const ids = [...new Set(data.map((r) => r.authorId as number))]
+    const authors = await this.authorRepository.getByIds(ids, {
+      withQuoteCount: false,
+      transaction: trx,
+    })
+
+    // Create map for O(1) lookup of valid author IDs
+    const authorMap = new Map(authors.map((a) => [a.id, a]))
+
+    // Filter quotes with valid authors and ensure type safety
+    return data.filter((quote): quote is CreateQuoteRequest & { authorId: number } => {
+      const authorId = quote.authorId as number
+      return authorMap.has(authorId)
+    })
+  }
+
+  /**
+   * Creates quotes in bulk with their associated authors
+   * Handles both quotes with author IDs and author names
+   */
+  private async createQuotes(input: MassCreateQuotesRequest, trx: TransactionClientContract) {
+    // Process quotes in chunks to avoid memory issues
+    const processChunk = async (chunk: CreateQuoteRequest[]) => {
+      const quotesByAuthorName = await this.processQuotesBySlug(
+        chunk.filter((r) => r.authorId === undefined || r.authorId === null),
+        trx
+      )
+
+      const quotesByAuthorId = await this.processQuotesById(
+        chunk.filter((r) => r.authorId !== undefined && r.authorId !== null),
+        trx
+      )
+
+      const dataToProcess = [...quotesByAuthorName, ...quotesByAuthorId]
+      if (dataToProcess.length === 0) return []
+
+      return await this.repository().createMultiple(
+        dataToProcess.map((r) => ({ content: r.content, author_id: r.authorId }) as NewQuoteSchema),
+        { transaction: trx }
+      )
     }
+
+    // Process in chunks of CHUNK_SIZE
+    const chunks = Array.from(
+      { length: Math.ceil(input.quotes.length / this.CHUNK_SIZE) },
+      (_, i) => input.quotes.slice(i * this.CHUNK_SIZE, (i + 1) * this.CHUNK_SIZE)
+    ).filter((chunk) => chunk.length > 0)
+
+    const results = []
+    for (const chunk of chunks) {
+      const chunkResults = await processChunk(chunk)
+      results.push(...chunkResults)
+    }
+
+    return results
   }
 }
