@@ -35,7 +35,7 @@ interface Result {
 }
 
 interface ProcessedQuotes {
-  quotes: ValidQuoteInput[]
+  validQuotes: ValidQuoteInput[]
   skipped: SkippedQuote[]
 }
 
@@ -147,89 +147,8 @@ export default class MassCreateQuotesService extends QuoteService {
   }
 
   /**
-   * Processes quotes that don't have author IDs
-   * Validates that the authors exist in the database
-   */
-  private async processQuotesBySlug(
-    data: CreateQuoteRequest[],
-    trx?: TransactionClientContract
-  ): Promise<ProcessedQuotes> {
-    if (data.length === 0) return { quotes: [], skipped: [] }
-
-    // Get authors by their slugs
-    const authors = await this.authorRepository.getBySlugs(
-      data.map((r) => Author.getSlug(r.author as string)),
-      {
-        withQuoteCount: false,
-        transaction: trx,
-      }
-    )
-
-    const authorMap = new Map(authors.map((a) => [a.slug, a.id]))
-    const quotes: ValidQuoteInput[] = []
-    const skipped: SkippedQuote[] = []
-
-    // Map quotes to authors and track invalid ones
-    data.forEach((quote) => {
-      const authorSlug = Author.getSlug(quote.author as string)
-      const authorId = authorMap.get(authorSlug)
-
-      if (typeof authorId === 'number') {
-        quotes.push({ ...quote, authorId, author: undefined } as QuoteWithAuthorId)
-      } else {
-        skipped.push({
-          quote,
-          reason: 'INVALID_AUTHOR',
-          details: `Author not found: ${quote.author}`,
-        })
-      }
-    })
-
-    return { quotes, skipped }
-  }
-
-  /**
-   * Processes quotes that already have author IDs
-   * Validates that the authors exist in the database
-   */
-  private async processQuotesById(
-    data: CreateQuoteRequest[],
-    trx?: TransactionClientContract
-  ): Promise<ProcessedQuotes> {
-    if (data.length === 0) return { quotes: [], skipped: [] }
-
-    // Get unique author IDs to minimize database queries
-    const ids = [...new Set(data.map((r) => r.authorId as number))]
-    const authors = await this.authorRepository.getByIds(ids, {
-      withQuoteCount: false,
-      transaction: trx,
-    })
-
-    // Create map for O(1) lookup of valid author IDs
-    const authorMap = new Map(authors.map((a) => [a.id, a]))
-    const quotes: ValidQuoteInput[] = []
-    const skipped: SkippedQuote[] = []
-
-    // Filter quotes with valid authors and track invalid ones
-    data.forEach((quote) => {
-      const authorId = quote.authorId as number
-      if (authorMap.has(authorId)) {
-        quotes.push({ ...quote, author: undefined } as QuoteWithAuthorId)
-      } else {
-        skipped.push({
-          quote,
-          reason: 'INVALID_AUTHOR',
-          details: `Author with ID ${authorId} not found`,
-        })
-      }
-    })
-
-    return { quotes, skipped }
-  }
-
-  /**
    * Creates quotes in bulk with their associated authors
-   * Handles both quotes with author IDs and author names
+   * Processes quotes in chunks to manage memory usage
    */
   private async createQuotes(
     input: MassCreateQuotesRequest,
@@ -239,32 +158,18 @@ export default class MassCreateQuotesService extends QuoteService {
     const processChunk = async (
       chunk: CreateQuoteRequest[]
     ): Promise<{ quotes: Quote[]; skipped: SkippedQuote[] }> => {
-      const byName = await this.processQuotesBySlug(
-        chunk.filter(
-          (r): r is CreateQuoteRequest & { author: string } =>
-            typeof r.author === 'string' && r.authorId === undefined
-        ),
-        trx
-      )
+      const { validQuotes, skipped } = await this.validateQuotes(chunk, trx)
 
-      const byId = await this.processQuotesById(
-        chunk.filter(
-          (r): r is CreateQuoteRequest & { authorId: number } => typeof r.authorId === 'number'
-        ),
-        trx
-      )
-
-      const dataToProcess = [...byName.quotes, ...byId.quotes]
-      if (dataToProcess.length === 0) {
-        return { quotes: [], skipped: [...byName.skipped, ...byId.skipped] }
+      if (validQuotes.length === 0) {
+        return { quotes: [], skipped }
       }
 
       const createdQuotes = await this.repository().createMultiple(
-        dataToProcess.map(
+        validQuotes.map(
           (r) =>
             ({
               content: r.content,
-              author_id: 'authorId' in r ? r.authorId : undefined,
+              author_id: r.authorId,
             }) as NewQuoteSchema
         ),
         { transaction: trx }
@@ -272,7 +177,7 @@ export default class MassCreateQuotesService extends QuoteService {
 
       return {
         quotes: createdQuotes,
-        skipped: [...byName.skipped, ...byId.skipped],
+        skipped,
       }
     }
 
@@ -293,5 +198,124 @@ export default class MassCreateQuotesService extends QuoteService {
     }
 
     return { quotes: allQuotes, skipped: allSkipped }
+  }
+
+  /**
+   * Validates a batch of quotes against the database
+   * Checks for valid authors and returns both valid and invalid quotes
+   */
+  private async validateQuotes(
+    data: CreateQuoteRequest[],
+    trx?: TransactionClientContract
+  ): Promise<ProcessedQuotes> {
+    if (data.length === 0) {
+      return { validQuotes: [], skipped: [] }
+    }
+
+    // Prepare slugs and ids for lookup
+    const slugsAndIds = data.map((quote) =>
+      typeof quote.authorId === 'number' ? quote.authorId : Author.getSlug(quote.author as string)
+    )
+
+    // Get all authors in one query
+    const authors = await this.authorRepository.getBySlugsOrIds(slugsAndIds, {
+      withQuoteCount: false,
+      transaction: trx,
+    })
+
+    // Create maps for O(1) lookup with a single iteration
+    const { authorById, authorBySlug } = this.createAuthorMaps(authors)
+
+    // Validate each quote and merge results
+    const results = data.map((quote) => {
+      if (typeof quote.authorId === 'number') {
+        return this.validateQuoteByAuthorId(
+          quote as CreateQuoteRequest & { authorId: number },
+          authorById
+        )
+      }
+
+      if (typeof quote.author === 'string') {
+        return this.validateQuoteByAuthorName(
+          quote as CreateQuoteRequest & { author: string },
+          authorBySlug
+        )
+      }
+
+      return this.handleMissingAuthor(quote)
+    })
+
+    return this.combineProcessingResults(results)
+  }
+
+  private validateQuoteByAuthorId(
+    quote: CreateQuoteRequest & { authorId: number },
+    authorById: Map<number, Author>
+  ): ProcessedQuotes {
+    const author = authorById.get(quote.authorId)
+
+    return {
+      validQuotes: author ? [this.createValidQuote(quote)] : [],
+      skipped: author
+        ? []
+        : [this.createInvalidAuthorError(quote, `Author with ID ${quote.authorId} not found`)],
+    }
+  }
+
+  private validateQuoteByAuthorName(
+    quote: CreateQuoteRequest & { author: string },
+    authorBySlug: Map<string, Author>
+  ): ProcessedQuotes {
+    const author = authorBySlug.get(Author.getSlug(quote.author))
+
+    return {
+      validQuotes: author ? [this.createValidQuote(quote, author.id)] : [],
+      skipped: author
+        ? []
+        : [this.createInvalidAuthorError(quote, `Author not found: ${quote.author}`)],
+    }
+  }
+
+  private handleMissingAuthor(quote: CreateQuoteRequest): ProcessedQuotes {
+    return {
+      validQuotes: [],
+      skipped: [
+        this.createInvalidAuthorError(quote, 'Quote must have either authorId or author name'),
+      ],
+    }
+  }
+
+  private createInvalidAuthorError(quote: CreateQuoteRequest, details: string): SkippedQuote {
+    return {
+      quote,
+      reason: 'INVALID_AUTHOR',
+      details,
+    }
+  }
+
+  private createValidQuote(quote: CreateQuoteRequest, authorId?: number): QuoteWithAuthorId {
+    return {
+      ...quote,
+      authorId: authorId ?? quote.authorId,
+      author: undefined,
+    } as QuoteWithAuthorId
+  }
+
+  private combineProcessingResults(results: ProcessedQuotes[]): ProcessedQuotes {
+    return {
+      validQuotes: results.flatMap((r) => r.validQuotes),
+      skipped: results.flatMap((r) => r.skipped),
+    }
+  }
+
+  private createAuthorMaps(authors: Author[]) {
+    return authors.reduce(
+      (maps, author) => {
+        maps.authorById.set(author.id, author)
+        maps.authorBySlug.set(author.slug, author)
+        return maps
+      },
+      { authorById: new Map<number, Author>(), authorBySlug: new Map<string, Author>() }
+    )
   }
 }

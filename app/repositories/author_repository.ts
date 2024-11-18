@@ -100,6 +100,28 @@ export default class AuthorRepository {
     )
   }
 
+  async getBySlugsOrIds(
+    slugsOrIds: (string | number)[],
+    options: { withQuoteCount?: boolean; transaction?: TransactionClientContract } = {}
+  ) {
+    const { withQuoteCount = true, transaction = undefined } = options
+    const query = Author.query({ client: transaction })
+      .whereIn(
+        'id',
+        slugsOrIds.filter((id) => typeof id === 'number')
+      )
+      .orWhereIn(
+        'slug',
+        slugsOrIds.filter((slug) => typeof slug === 'string')
+      )
+
+    if (withQuoteCount) {
+      query.withScopes((s) => s.withQuoteCount())
+    }
+
+    return await query.exec()
+  }
+
   // At this point, I'm trusting that the `authors` list are consisted of names that are unique and not existing in the database.
   // If somehow, there was a bug in validating the request, this method will throw a unique constraint error.
   async createMultiple(
