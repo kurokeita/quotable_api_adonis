@@ -28,10 +28,10 @@ export interface SkippedQuote {
 }
 
 interface Result {
-  inputCount: number
-  createdCount: number
-  skippedCount: number
-  skipped: SkippedQuote[]
+  input: number
+  created: number
+  skipped: number
+  skippedQuotes: SkippedQuote[]
 }
 
 interface ProcessedQuotes {
@@ -69,10 +69,10 @@ export default class MassCreateQuotesService extends QuoteService {
       if (validQuotes.length === 0) {
         await trx.commit()
         return {
-          inputCount: inputCount,
-          createdCount: 0,
-          skippedCount: duplicateQuotes.length,
-          skipped: duplicateQuotes,
+          input: inputCount,
+          created: 0,
+          skipped: duplicateQuotes.length,
+          skippedQuotes: duplicateQuotes,
         }
       }
 
@@ -103,10 +103,10 @@ export default class MassCreateQuotesService extends QuoteService {
       await trx.commit()
 
       return {
-        inputCount: inputCount,
-        createdCount: result.length,
-        skippedCount: duplicateQuotes.length + skipped.length,
-        skipped: [...duplicateQuotes, ...skipped],
+        input: inputCount,
+        created: result.length,
+        skipped: duplicateQuotes.length + skipped.length,
+        skippedQuotes: [...duplicateQuotes, ...skipped],
       }
     } catch (error) {
       await trx.rollback()

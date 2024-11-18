@@ -31,10 +31,10 @@ export default class UploadService {
     }
 
     let quotes = {
-      inputCount: 0,
-      createdCount: 0,
-      skippedCount: 0,
-      skipped: [] as SkippedQuote[],
+      input: 0,
+      created: 0,
+      skipped: 0,
+      skippedQuotes: [] as SkippedQuote[],
     }
     if (jsonContent.quotes && jsonContent.quotes.length > 0) {
       const quotesData = await massCreateQuotesValidator.validate({ quotes: jsonContent.quotes })

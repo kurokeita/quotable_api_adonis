@@ -4,10 +4,17 @@ import AuthorService from '#services/authors/author_service'
 import db from '@adonisjs/lucid/services/db'
 import { TransactionClientContract } from '@adonisjs/lucid/types/database'
 
+export interface SkippedAuthor {
+  author: CreateAuthorsRequest['authors'][0]
+  reason: 'DUPLICATE'
+  details: string
+}
+
 interface Result {
   input: number
   skipped: number
   created: number
+  skippedAuthors: SkippedAuthor[]
 }
 
 export default class MassCreateAuthorsService extends AuthorService {
@@ -22,17 +29,19 @@ export default class MassCreateAuthorsService extends AuthorService {
 
       if (chunks.length === 0) {
         await trx.commit()
-        return { input: 0, skipped: 0, created: 0 }
+        return { input: 0, skipped: 0, created: 0, skippedAuthors: [] }
       }
 
       let totalSkipped = 0
       let totalCreated = 0
+      const skippedAuthors: SkippedAuthor[] = []
 
       // Process each chunk
       for (const chunk of chunks) {
         // Filter existing authors in this chunk
-        const newAuthors = await this.filterExistingAuthors(chunk, trx)
-        totalSkipped += chunk.length - newAuthors.length
+        const { newAuthors, skipped } = await this.filterExistingAuthors(chunk, trx)
+        totalSkipped += skipped.length
+        skippedAuthors.push(...skipped)
 
         if (newAuthors.length > 0) {
           // Create new authors from this chunk
@@ -46,6 +55,7 @@ export default class MassCreateAuthorsService extends AuthorService {
         input: inputs.authors.length,
         skipped: totalSkipped,
         created: totalCreated,
+        skippedAuthors,
       }
     } catch (error) {
       await trx.rollback()
@@ -63,13 +73,13 @@ export default class MassCreateAuthorsService extends AuthorService {
   }
 
   /**
-   * Filters out authors that already exist in the database
+   * Filters out authors that already exist in the database and tracks skipped authors
    */
   private async filterExistingAuthors(
     authors: CreateAuthorsRequest['authors'],
     trx: TransactionClientContract
-  ) {
-    if (authors.length === 0) return []
+  ): Promise<{ newAuthors: CreateAuthorsRequest['authors']; skipped: SkippedAuthor[] }> {
+    if (authors.length === 0) return { newAuthors: [], skipped: [] }
 
     // Get existing authors
     const names = authors.map((author) => author.name)
@@ -81,8 +91,23 @@ export default class MassCreateAuthorsService extends AuthorService {
     // Use Set for O(1) lookup of existing names
     const existingNames = new Set(existingAuthors.map((author) => author.name.toLowerCase()))
 
-    // Return authors that don't exist
-    return authors.filter((author) => !existingNames.has(author.name.toLowerCase()))
+    const newAuthors: CreateAuthorsRequest['authors'] = []
+    const skipped: SkippedAuthor[] = []
+
+    // Separate new and existing authors
+    for (const author of authors) {
+      if (existingNames.has(author.name.toLowerCase())) {
+        skipped.push({
+          author,
+          reason: 'DUPLICATE',
+          details: `Author with name "${author.name}" already exists`,
+        })
+      } else {
+        newAuthors.push(author)
+      }
+    }
+
+    return { newAuthors, skipped }
   }
 
   /**
