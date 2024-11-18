@@ -22,9 +22,11 @@ import {
   getRandomQuoteValidator,
   indexAllQuotesValidator,
   massCreateQuotesValidator,
+  quotesJsonValidator,
   updateQuoteValidator,
 } from '#validators/quote'
 import { inject } from '@adonisjs/core'
+import * as fs from 'node:fs' // <--- Added import statement
 
 export default class QuotesController {
   @inject()
@@ -65,6 +67,29 @@ export default class QuotesController {
     const data: MassCreateQuotesRequest = await request.validateUsing(massCreateQuotesValidator)
 
     return await service.handle(data)
+  }
+
+  @inject()
+  async massCreateFromFile({ request }: HttpContext, service: MassCreateQuotesService) {
+    const { quotes: file } = await request.validateUsing(quotesJsonValidator)
+
+    try {
+      // Read file content using tmpPath for temporary files
+      const content = await fs.promises.readFile(file.tmpPath!)
+      const jsonContent = JSON.parse(content.toString())
+
+      // Validate the parsed content using mass create validator
+      const validatedData = await massCreateQuotesValidator.validate({ quotes: jsonContent })
+
+      // Process the quotes using the service
+      return await service.handle(validatedData)
+    } catch (error) {
+      return {
+        error: true,
+        message: 'Failed to process quotes file',
+        details: error.message,
+      }
+    }
   }
 
   @inject()
