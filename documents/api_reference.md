@@ -71,7 +71,7 @@ Get one or more random quotes from the database. This method supports several fi
 
 By default, this methods returns a single random quote. You can specify the number of random quotes to return via the `limit` parameter.
 
-> ⚠️ This method is equivalent to the `/random` endpoint. The only difference is the response format:
+> âš ï¸ This method is equivalent to the `/random` endpoint. The only difference is the response format:
 > Instead of retuning a single `Quote` object, this method returns an `Array` of `Quote` objects.
 
 | param     | type     | Description                                                                                                                                                                                                                                                                                                                                                                                                                                               |
