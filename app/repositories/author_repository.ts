@@ -120,8 +120,20 @@ export default class AuthorRepository {
     )
   }
 
-  async getByNames(names: string[] | string) {
-    return await Author.query().whereIn('name', [names].flat(Infinity))
+  async getByNames(
+    names: string[] | string,
+    options: { withQuoteCount?: boolean; transaction?: TransactionClientContract } = {}
+  ) {
+    const query = Author.query({ client: options.transaction }).whereIn(
+      db.raw('LOWER(name)'),
+      [names].flat(Infinity).map((name) => (name as String).toLowerCase())
+    )
+
+    if (options.withQuoteCount) {
+      query.withScopes((s) => s.withQuoteCount())
+    }
+
+    return await query.exec()
   }
 
   async update(
