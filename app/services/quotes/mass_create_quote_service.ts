@@ -7,6 +7,37 @@ import db from '@adonisjs/lucid/services/db'
 import QuoteService from './quote_service.js'
 import Author from '#models/author'
 import { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import Quote from '#models/quote'
+
+interface QuoteWithAuthorId extends Omit<CreateQuoteRequest, 'author' | 'authorId'> {
+  authorId: number
+  author?: never
+}
+
+interface QuoteWithAuthorName extends Omit<CreateQuoteRequest, 'author' | 'authorId'> {
+  author: string
+  authorId?: never
+}
+
+type ValidQuoteInput = QuoteWithAuthorId | QuoteWithAuthorName
+
+interface SkippedQuote {
+  quote: CreateQuoteRequest
+  reason: 'DUPLICATE' | 'INVALID_AUTHOR' | 'OTHER'
+  details?: string
+}
+
+interface Result {
+  inputCount: number
+  createdCount: number
+  skippedCount: number
+  skipped: SkippedQuote[]
+}
+
+interface ProcessedQuotes {
+  quotes: ValidQuoteInput[]
+  skipped: SkippedQuote[]
+}
 
 @inject()
 export default class MassCreateQuotesService extends QuoteService {
@@ -24,7 +55,7 @@ export default class MassCreateQuotesService extends QuoteService {
     super(repo)
   }
 
-  async handle(input: MassCreateQuotesRequest) {
+  async handle(input: MassCreateQuotesRequest): Promise<Result | null> {
     const trx = await db.transaction()
 
     try {
@@ -33,11 +64,16 @@ export default class MassCreateQuotesService extends QuoteService {
 
       if (input.quotes.length === 0) {
         await trx.commit()
-        return []
+        return {
+          inputCount: input.quotes.length,
+          createdCount: 0,
+          skippedCount: input.quotes.length,
+          skipped: [],
+        }
       }
 
       // Create quotes and associate with authors (new or existing)
-      const quotes = await this.createQuotes(input, trx)
+      const { quotes, skipped } = await this.createQuotes(input, trx)
 
       // Prepare tag associations efficiently using Maps for O(1) lookups
       const contentToQuote = new Map(quotes.map((q) => [q.content, q]))
@@ -62,7 +98,12 @@ export default class MassCreateQuotesService extends QuoteService {
 
       await trx.commit()
 
-      return result
+      return {
+        inputCount: input.quotes.length,
+        createdCount: result.length,
+        skippedCount: skipped.length,
+        skipped,
+      }
     } catch (error) {
       await trx.rollback()
       throw error
@@ -109,8 +150,11 @@ export default class MassCreateQuotesService extends QuoteService {
    * Processes quotes that don't have author IDs
    * Validates that the authors exist in the database
    */
-  private async processQuotesBySlug(data: CreateQuoteRequest[], trx?: TransactionClientContract) {
-    if (data.length === 0) return []
+  private async processQuotesBySlug(
+    data: CreateQuoteRequest[],
+    trx?: TransactionClientContract
+  ): Promise<ProcessedQuotes> {
+    if (data.length === 0) return { quotes: [], skipped: [] }
 
     // Get authors by their slugs
     const authors = await this.authorRepository.getBySlugs(
@@ -122,24 +166,37 @@ export default class MassCreateQuotesService extends QuoteService {
     )
 
     const authorMap = new Map(authors.map((a) => [a.slug, a.id]))
+    const quotes: ValidQuoteInput[] = []
+    const skipped: SkippedQuote[] = []
 
-    // Map quotes to authors and ensure type safety
-    return data
-      .map((quote) => ({
-        ...quote,
-        authorId: authorMap.get(Author.getSlug(quote.author as string)),
-      }))
-      .filter((quote: CreateQuoteRequest) => {
-        return typeof quote.authorId === 'number'
-      })
+    // Map quotes to authors and track invalid ones
+    data.forEach((quote) => {
+      const authorSlug = Author.getSlug(quote.author as string)
+      const authorId = authorMap.get(authorSlug)
+
+      if (typeof authorId === 'number') {
+        quotes.push({ ...quote, authorId, author: undefined } as QuoteWithAuthorId)
+      } else {
+        skipped.push({
+          quote,
+          reason: 'INVALID_AUTHOR',
+          details: `Author not found: ${quote.author}`,
+        })
+      }
+    })
+
+    return { quotes, skipped }
   }
 
   /**
    * Processes quotes that already have author IDs
    * Validates that the authors exist in the database
    */
-  private async processQuotesById(data: CreateQuoteRequest[], trx?: TransactionClientContract) {
-    if (data.length === 0) return []
+  private async processQuotesById(
+    data: CreateQuoteRequest[],
+    trx?: TransactionClientContract
+  ): Promise<ProcessedQuotes> {
+    if (data.length === 0) return { quotes: [], skipped: [] }
 
     // Get unique author IDs to minimize database queries
     const ids = [...new Set(data.map((r) => r.authorId as number))]
@@ -150,38 +207,73 @@ export default class MassCreateQuotesService extends QuoteService {
 
     // Create map for O(1) lookup of valid author IDs
     const authorMap = new Map(authors.map((a) => [a.id, a]))
+    const quotes: ValidQuoteInput[] = []
+    const skipped: SkippedQuote[] = []
 
-    // Filter quotes with valid authors and ensure type safety
-    return data.filter((quote): quote is CreateQuoteRequest & { authorId: number } => {
+    // Filter quotes with valid authors and track invalid ones
+    data.forEach((quote) => {
       const authorId = quote.authorId as number
-      return authorMap.has(authorId)
+      if (authorMap.has(authorId)) {
+        quotes.push({ ...quote, author: undefined } as QuoteWithAuthorId)
+      } else {
+        skipped.push({
+          quote,
+          reason: 'INVALID_AUTHOR',
+          details: `Author with ID ${authorId} not found`,
+        })
+      }
     })
+
+    return { quotes, skipped }
   }
 
   /**
    * Creates quotes in bulk with their associated authors
    * Handles both quotes with author IDs and author names
    */
-  private async createQuotes(input: MassCreateQuotesRequest, trx: TransactionClientContract) {
+  private async createQuotes(
+    input: MassCreateQuotesRequest,
+    trx: TransactionClientContract
+  ): Promise<{ quotes: Quote[]; skipped: SkippedQuote[] }> {
     // Process quotes in chunks to avoid memory issues
-    const processChunk = async (chunk: CreateQuoteRequest[]) => {
-      const quotesByAuthorName = await this.processQuotesBySlug(
-        chunk.filter((r) => r.authorId === undefined || r.authorId === null),
+    const processChunk = async (
+      chunk: CreateQuoteRequest[]
+    ): Promise<{ quotes: Quote[]; skipped: SkippedQuote[] }> => {
+      const byName = await this.processQuotesBySlug(
+        chunk.filter(
+          (r): r is CreateQuoteRequest & { author: string } =>
+            typeof r.author === 'string' && r.authorId === undefined
+        ),
         trx
       )
 
-      const quotesByAuthorId = await this.processQuotesById(
-        chunk.filter((r) => r.authorId !== undefined && r.authorId !== null),
+      const byId = await this.processQuotesById(
+        chunk.filter(
+          (r): r is CreateQuoteRequest & { authorId: number } => typeof r.authorId === 'number'
+        ),
         trx
       )
 
-      const dataToProcess = [...quotesByAuthorName, ...quotesByAuthorId]
-      if (dataToProcess.length === 0) return []
+      const dataToProcess = [...byName.quotes, ...byId.quotes]
+      if (dataToProcess.length === 0) {
+        return { quotes: [], skipped: [...byName.skipped, ...byId.skipped] }
+      }
 
-      return await this.repository().createMultiple(
-        dataToProcess.map((r) => ({ content: r.content, author_id: r.authorId }) as NewQuoteSchema),
+      const createdQuotes = await this.repository().createMultiple(
+        dataToProcess.map(
+          (r) =>
+            ({
+              content: r.content,
+              author_id: 'authorId' in r ? r.authorId : undefined,
+            }) as NewQuoteSchema
+        ),
         { transaction: trx }
       )
+
+      return {
+        quotes: createdQuotes,
+        skipped: [...byName.skipped, ...byId.skipped],
+      }
     }
 
     // Process in chunks of CHUNK_SIZE
@@ -190,12 +282,16 @@ export default class MassCreateQuotesService extends QuoteService {
       (_, i) => input.quotes.slice(i * this.CHUNK_SIZE, (i + 1) * this.CHUNK_SIZE)
     ).filter((chunk) => chunk.length > 0)
 
-    const results = []
+    const allQuotes: Quote[] = []
+    const allSkipped: SkippedQuote[] = []
+
+    // Process each chunk and collect results
     for (const chunk of chunks) {
-      const chunkResults = await processChunk(chunk)
-      results.push(...chunkResults)
+      const { quotes, skipped } = await processChunk(chunk)
+      allQuotes.push(...quotes)
+      allSkipped.push(...skipped)
     }
 
-    return results
+    return { quotes: allQuotes, skipped: allSkipped }
   }
 }

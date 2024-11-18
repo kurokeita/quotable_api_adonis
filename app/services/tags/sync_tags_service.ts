@@ -102,16 +102,6 @@ export default class SyncTagsService extends TagService {
       await client.table(pivotTable).multiInsert(relationships)
     }
 
-    // Load tags for all quotes if needed
-    if (quotes.length > 0) {
-      await Quote.query({ client: options.transaction })
-        .whereIn(
-          'id',
-          quotes.map((q) => q.id)
-        )
-        .preload('tags')
-    }
-
     return quotes
   }
 }
