@@ -1,13 +1,5 @@
 import { compose } from '@adonisjs/core/helpers'
-import {
-  BaseModel,
-  beforeFetch,
-  beforeFind,
-  belongsTo,
-  column,
-  computed,
-  manyToMany,
-} from '@adonisjs/lucid/orm'
+import { BaseModel, belongsTo, column, computed, manyToMany, scope } from '@adonisjs/lucid/orm'
 import type { ModelObject, ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import type { BelongsTo, ManyToMany } from '@adonisjs/lucid/types/relations'
 import { SoftDeletes } from 'adonis-lucid-soft-deletes'
@@ -37,7 +29,7 @@ export default class Quote extends compose(BaseModel, SoftDeletes) {
   @belongsTo(() => Author)
   declare author: BelongsTo<typeof Author>
 
-  @manyToMany(() => Tag)
+  @manyToMany(() => Tag, { pivotTable: Tag.quoteTagPivotTable })
   declare tags: ManyToMany<typeof Tag>
 
   @computed()
@@ -45,11 +37,9 @@ export default class Quote extends compose(BaseModel, SoftDeletes) {
     return this.content.length
   }
 
-  @beforeFetch()
-  @beforeFind()
-  static queryBasicRelationships(query: ModelQueryBuilderContract<typeof Quote>) {
+  static queryBasicRelationships = scope((query: ModelQueryBuilderContract<typeof Quote>) => {
     query.preload('tags').preload('author')
-  }
+  })
 
   serialize(): ModelObject {
     const serializedData = super.serialize()

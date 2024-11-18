@@ -11,7 +11,6 @@ router
     router
       .group(() => {
         router.post('/', [AuthorsController, 'create'])
-        router.post('/multiple', [AuthorsController, 'createMultiple'])
         router.patch('/:id', [AuthorsController, 'update']).where('id', router.matchers.number())
         router.delete('/:id', [AuthorsController, 'delete']).where('id', router.matchers.number())
       })

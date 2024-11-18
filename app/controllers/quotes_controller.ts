@@ -8,6 +8,7 @@ import {
   UpdateQuoteRequest,
 } from '#requests/quotes'
 import CreateQuoteService from '#services/quotes/create_quote_service'
+import DeleteQuoteService from '#services/quotes/delete_quote_service'
 import GetQuoteByIdService from '#services/quotes/get_quote_by_id_service'
 import GetRandomQuoteService from '#services/quotes/get_random_quote_service'
 import GetRandomQuotesService from '#services/quotes/get_random_quotes_service'
@@ -21,7 +22,6 @@ import {
   updateQuoteValidator,
 } from '#validators/quote'
 import { inject } from '@adonisjs/core'
-import DeleteQuoteService from '#services/quotes/delete_quote_service'
 
 export default class QuotesController {
   @inject()

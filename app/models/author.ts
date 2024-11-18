@@ -5,6 +5,7 @@ import type { HasMany } from '@adonisjs/lucid/types/relations'
 import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import { DateTime } from 'luxon'
 import Quote from './quote.js'
+import slugify from '#utils/slugify'
 
 export default class Author extends compose(BaseModel, SoftDeletes) {
   @column({ isPrimary: true })
@@ -45,6 +46,8 @@ export default class Author extends compose(BaseModel, SoftDeletes) {
   static withQuoteCount = scope((query: ModelQueryBuilderContract<typeof Author>) => {
     query.withCount('quotes', (q) => q.as('quoteCount'))
   })
+
+  static getSlug = (name: string) => slugify(name, { lower: true })
 
   serialize(): ModelObject {
     const serializedData = super.serialize()

@@ -3,9 +3,11 @@ import {
   getRandomQuotesValidator,
   getRandomQuoteValidator,
   indexAllQuotesValidator,
+  massCreateQuotesValidator,
   updateQuoteValidator,
 } from '#validators/quote'
 import { InferInput } from '@vinejs/vine/types'
+import { CreateAuthorRequest } from './authors.js'
 
 export type IndexAllQuotesRequest = Omit<
   InferInput<typeof indexAllQuotesValidator>,
@@ -35,7 +37,19 @@ export type GetRandomQuotesRequest = Omit<
 }
 
 export type CreateQuoteRequest = Omit<InferInput<typeof createQuoteValidator>, 'authorId'> & {
-  authorId: number
+  authorId: number | null | undefined
 }
 
 export type UpdateQuoteRequest = InferInput<typeof updateQuoteValidator>
+
+export type MassCreateQuotesRequest = Omit<
+  InferInput<typeof massCreateQuotesValidator>,
+  'quotes'
+> & {
+  quotes: CreateQuoteRequest[]
+}
+
+export type UploadFileContentRequest = {
+  authors: CreateAuthorRequest[]
+  quotes: CreateQuoteRequest[]
+}

@@ -9,9 +9,9 @@ export default class extends BaseSchema {
       table.bigInteger('author_id').unsigned().references('authors.id')
       table.text('content')
 
-      table.timestamp('created_at').defaultTo(this.raw('CURRENT_TIMESTAMP'))
-      table.timestamp('updated_at').defaultTo(this.raw('CURRENT_TIMESTAMP'))
-      table.timestamp('deleted_at')
+      table.timestamp('created_at').defaultTo(this.raw('CURRENT_TIMESTAMP')).notNullable()
+      table.timestamp('updated_at').defaultTo(this.raw('CURRENT_TIMESTAMP')).notNullable()
+      table.timestamp('deleted_at').nullable()
 
       table.index('content', 'content_index', 'FULLTEXT')
     })
