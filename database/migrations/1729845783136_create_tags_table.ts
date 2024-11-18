@@ -8,9 +8,9 @@ export default class extends BaseSchema {
       table.bigIncrements('id')
       table.string('name').index()
 
-      table.timestamp('created_at').defaultTo(this.raw('CURRENT_TIMESTAMP'))
-      table.timestamp('updated_at').defaultTo(this.raw('CURRENT_TIMESTAMP'))
-      table.timestamp('deleted_at')
+      table.timestamp('created_at').defaultTo(this.raw('CURRENT_TIMESTAMP')).notNullable()
+      table.timestamp('updated_at').defaultTo(this.raw('CURRENT_TIMESTAMP')).notNullable()
+      table.timestamp('deleted_at').nullable()
     })
   }
 
