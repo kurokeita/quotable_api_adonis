@@ -10,7 +10,7 @@ interface Result {
   created: number
 }
 
-export default class CreateAuthorsService extends AuthorService {
+export default class MassCreateAuthorsService extends AuthorService {
   private CHUNK_SIZE = 500
 
   async handle(inputs: CreateAuthorsRequest): Promise<Result> {

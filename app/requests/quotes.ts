@@ -7,6 +7,7 @@ import {
   updateQuoteValidator,
 } from '#validators/quote'
 import { InferInput } from '@vinejs/vine/types'
+import { CreateAuthorRequest } from './authors.js'
 
 export type IndexAllQuotesRequest = Omit<
   InferInput<typeof indexAllQuotesValidator>,
@@ -45,5 +46,10 @@ export type MassCreateQuotesRequest = Omit<
   InferInput<typeof massCreateQuotesValidator>,
   'quotes'
 > & {
+  quotes: CreateQuoteRequest[]
+}
+
+export type UploadFileContentRequest = {
+  authors: CreateAuthorRequest[]
   quotes: CreateQuoteRequest[]
 }

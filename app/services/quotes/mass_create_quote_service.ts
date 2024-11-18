@@ -1,13 +1,13 @@
+import Author from '#models/author'
+import Quote from '#models/quote'
 import AuthorRepository from '#repositories/author_repository'
 import QuoteRepository, { NewQuoteSchema } from '#repositories/quote_repository'
 import { CreateQuoteRequest, MassCreateQuotesRequest } from '#requests/quotes'
 import SyncTagsService from '#services/tags/sync_tags_service'
 import { inject } from '@adonisjs/core'
 import db from '@adonisjs/lucid/services/db'
-import QuoteService from './quote_service.js'
-import Author from '#models/author'
 import { TransactionClientContract } from '@adonisjs/lucid/types/database'
-import Quote from '#models/quote'
+import QuoteService from './quote_service.js'
 
 interface QuoteWithAuthorId extends Omit<CreateQuoteRequest, 'author' | 'authorId'> {
   authorId: number
@@ -21,7 +21,7 @@ interface QuoteWithAuthorName extends Omit<CreateQuoteRequest, 'author' | 'autho
 
 type ValidQuoteInput = QuoteWithAuthorId | QuoteWithAuthorName
 
-interface SkippedQuote {
+export interface SkippedQuote {
   quote: CreateQuoteRequest
   reason: 'DUPLICATE' | 'INVALID_AUTHOR' | 'OTHER'
   details?: string
@@ -55,7 +55,7 @@ export default class MassCreateQuotesService extends QuoteService {
     super(repo)
   }
 
-  async handle(input: MassCreateQuotesRequest): Promise<Result | null> {
+  async handle(input: MassCreateQuotesRequest): Promise<Result> {
     const trx = await db.transaction()
     const inputCount = input.quotes.length
 

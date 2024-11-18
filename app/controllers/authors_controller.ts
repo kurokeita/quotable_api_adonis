@@ -5,11 +5,11 @@ import {
   UpdateAuthorRequest,
 } from '#requests/authors'
 import CreateAuthorService from '#services/authors/create_author_service'
-import CreateAuthorsService from '#services/authors/create_authors_service'
 import DeleteAuthorService from '#services/authors/delete_author_service'
 import GetAuthorByIdService from '#services/authors/get_author_by_id_service'
 import GetAuthorBySlugService from '#services/authors/get_author_by_slug'
 import IndexAllAuthorsService from '#services/authors/index_all_author_service'
+import MassCreateAuthorsService from '#services/authors/mass_create_authors_service'
 import UpdateAuthorService from '#services/authors/update_author_service'
 import {
   createAuthorsValidator,
@@ -57,7 +57,7 @@ export default class AuthorsController {
   }
 
   @inject()
-  async createMultiple({ request }: HttpContext, service: CreateAuthorsService) {
+  async createMultiple({ request }: HttpContext, service: MassCreateAuthorsService) {
     const data: CreateAuthorsRequest = await request.validateUsing(createAuthorsValidator)
 
     return await service.handle(data)

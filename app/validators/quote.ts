@@ -87,11 +87,3 @@ export const massCreateQuotesValidator = vine.compile(
     quotes: vine.array(newQuoteSchema).distinct('content'),
   })
 )
-
-export const quotesJsonValidator = vine.compile(
-  vine.object({
-    quotes: vine.file({
-      extnames: ['json'],
-    }),
-  })
-)
