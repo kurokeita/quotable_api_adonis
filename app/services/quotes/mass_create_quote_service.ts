@@ -57,18 +57,22 @@ export default class MassCreateQuotesService extends QuoteService {
 
   async handle(input: MassCreateQuotesRequest): Promise<Result | null> {
     const trx = await db.transaction()
+    const inputCount = input.quotes.length
 
     try {
-      // Filter out quotes that already exist in the database
-      input.quotes = await this.filterExistingQuotes(input.quotes, trx)
+      // Filter out existing quotes first
+      const { validQuotes, skipped: duplicateQuotes } = await this.filterExistingQuotes(
+        input.quotes,
+        trx
+      )
 
-      if (input.quotes.length === 0) {
+      if (validQuotes.length === 0) {
         await trx.commit()
         return {
-          inputCount: input.quotes.length,
+          inputCount: inputCount,
           createdCount: 0,
-          skippedCount: input.quotes.length,
-          skipped: [],
+          skippedCount: duplicateQuotes.length,
+          skipped: duplicateQuotes,
         }
       }
 
@@ -99,10 +103,10 @@ export default class MassCreateQuotesService extends QuoteService {
       await trx.commit()
 
       return {
-        inputCount: input.quotes.length,
+        inputCount: inputCount,
         createdCount: result.length,
-        skippedCount: skipped.length,
-        skipped,
+        skippedCount: duplicateQuotes.length + skipped.length,
+        skipped: [...duplicateQuotes, ...skipped],
       }
     } catch (error) {
       await trx.rollback()
@@ -114,11 +118,15 @@ export default class MassCreateQuotesService extends QuoteService {
    * Filters out quotes that already exist in the database
    * Processes in chunks to avoid memory issues with large datasets
    */
-  private async filterExistingQuotes(data: CreateQuoteRequest[], trx: TransactionClientContract) {
-    if (data.length === 0) return []
+  private async filterExistingQuotes(
+    data: CreateQuoteRequest[],
+    trx: TransactionClientContract
+  ): Promise<{ validQuotes: CreateQuoteRequest[]; skipped: SkippedQuote[] }> {
+    if (data.length === 0) return { validQuotes: [], skipped: [] }
 
     // Process in chunks to avoid memory issues
-    const results: CreateQuoteRequest[] = []
+    const validQuotes: CreateQuoteRequest[] = []
+    const skipped: SkippedQuote[] = []
     const chunks = Array.from({ length: Math.ceil(data.length / this.CHUNK_SIZE) }, (_, i) =>
       data.slice(i * this.CHUNK_SIZE, (i + 1) * this.CHUNK_SIZE)
     ).filter((chunk) => chunk.length > 0)
@@ -138,12 +146,21 @@ export default class MassCreateQuotesService extends QuoteService {
       // Use Set for O(1) lookup of existing contents
       const existingContents = new Set(existingQuotes.map((q) => q.content))
 
-      // Filter non-existing quotes
-      const newQuotes = chunk.filter((quote) => !existingContents.has(quote.content))
-      results.push(...newQuotes)
+      // Separate new and duplicate quotes
+      for (const quote of chunk) {
+        if (existingContents.has(quote.content)) {
+          skipped.push({
+            quote,
+            reason: 'DUPLICATE',
+            details: 'Quote with this content already exists',
+          })
+        } else {
+          validQuotes.push(quote)
+        }
+      }
     }
 
-    return results
+    return { validQuotes, skipped }
   }
 
   /**
@@ -175,10 +192,7 @@ export default class MassCreateQuotesService extends QuoteService {
         { transaction: trx }
       )
 
-      return {
-        quotes: createdQuotes,
-        skipped,
-      }
+      return { quotes: createdQuotes, skipped }
     }
 
     // Process in chunks of CHUNK_SIZE
