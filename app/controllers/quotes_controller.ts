@@ -14,8 +14,6 @@ import GetRandomQuoteService from '#services/quotes/get_random_quote_service'
 import GetRandomQuotesService from '#services/quotes/get_random_quotes_service'
 import IndexAllQuoteSerive from '#services/quotes/index_all_quote_service'
 import UpdateQuoteService from '#services/quotes/update_quote_service'
-import UploadService from '#services/quotes/upload_service'
-import { jsonFileValidator } from '#validators/files'
 import {
   createQuoteValidator,
   getRandomQuotesValidator,
@@ -57,13 +55,6 @@ export default class QuotesController {
     const data: CreateQuoteRequest = await request.validateUsing(createQuoteValidator)
 
     return await service.handle(data)
-  }
-
-  @inject()
-  async upload({ request }: HttpContext, service: UploadService) {
-    const { file } = await request.validateUsing(jsonFileValidator)
-
-    return await service.handle(file)
   }
 
   @inject()

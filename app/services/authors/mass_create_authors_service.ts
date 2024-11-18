@@ -12,8 +12,8 @@ export interface SkippedAuthor {
 
 interface Result {
   input: number
-  skipped: number
   created: number
+  skipped: number
   skippedAuthors: SkippedAuthor[]
 }
 
@@ -29,7 +29,7 @@ export default class MassCreateAuthorsService extends AuthorService {
 
       if (chunks.length === 0) {
         await trx.commit()
-        return { input: 0, skipped: 0, created: 0, skippedAuthors: [] }
+        return { input: 0, created: 0, skipped: 0, skippedAuthors: [] }
       }
 
       let totalSkipped = 0
@@ -53,8 +53,8 @@ export default class MassCreateAuthorsService extends AuthorService {
       await trx.commit()
       return {
         input: inputs.authors.length,
-        skipped: totalSkipped,
         created: totalCreated,
+        skipped: totalSkipped,
         skippedAuthors,
       }
     } catch (error) {
